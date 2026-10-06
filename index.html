@@ -1074,6 +1074,9 @@ const assetId=id=>String(id||'').startsWith(DRIVE_ID_PREFIX)?String(id).slice(DR
 const isDriveAsset=id=>String(id||'').startsWith(DRIVE_ID_PREFIX);
 const assetUrl=id=>isDriveAsset(id)?'/api/drive/file?id='+encodeURIComponent(assetId(id)):'/_blob/'+encodeURIComponent(id||'');
 const assetHref=id=>assetUrl(id);
+/* Archivos subidos antes de Google Drive vivían en /_blob/, que no existe en Vercel: hay que volver a subirlos. */
+const LOST_MSG='Este PDF se subió antes de conectar Google Drive y ya no está disponible. Súbelo otra vez.';
+async function fetchAsset(url){const r=await fetch(url);if(!r.ok){const lost=/^\/_blob\//.test(String(url));throw Object.assign(new Error(lost?LOST_MSG:'No se pudo descargar el archivo ('+r.status+')'),{code:lost?'lost':'http'})}return r.arrayBuffer()}
 async function arcaApi(path,opts={}){const {data}=await SB.auth.getSession();const h=new Headers(opts.headers||{});if(data?.session?.access_token)h.set('Authorization','Bearer '+data.session.access_token);return fetch(path,{...opts,headers:h})}
 let DRIVE_CONNECTED=false,DRIVE_ERROR='';
 const DRIVE_MAX=4*1024*1024; /* Vercel corta los cuerpos de más de 4.5 MB */
@@ -2212,7 +2215,7 @@ async function openPdf(url,title,opt){opt=opt||{};
   root.innerHTML=`<div class="pdfv-h"><button class="pdfv-x" data-pdfclose aria-label="Cerrar">← Cerrar</button><b class="trunc">${esc(title||'PDF')}</b><span class="pdfv-n" aria-live="polite">Cargando…</span><button class="pdfv-x pdfv-dl" data-pdfdl hidden>Descargar</button></div><div class="pdfv-b" tabindex="0"></div>`;
   document.body.appendChild(root);root.querySelector('[data-pdfclose]').onclick=closePdf;root.querySelector('[data-pdfclose]').focus();
   const body=root.querySelector('.pdfv-b'),cnt=root.querySelector('.pdfv-n');
-  try{const [lib,buf]=await Promise.all([loadPdfJs(),(url instanceof Blob?url.arrayBuffer():fetch(url).then(r=>{if(!r.ok)throw new Error('http '+r.status);return r.arrayBuffer()}))]);
+  try{const [lib,buf]=await Promise.all([loadPdfJs(),(url instanceof Blob?url.arrayBuffer():fetchAsset(url))]);
     if(pdfView!==tok)return;
     const keep=buf.slice(0);const dl=root.querySelector('[data-pdfdl]');if(dl){dl.hidden=false;dl.onclick=async()=>{const fn=tpClean(opt.file||((title||'Arca')+'.pdf')).replace(/[\\/:*?"<>|]+/g,'-').replace(/\.pdf$/i,'')+'.pdf';const blob=new Blob([keep],{type:'application/pdf'});
       if(DL){try{await DL.save({filename:fn,data:blob});toast('Listo: PDF descargado.');return}catch(e){if(e&&e.code==='declined')return}}
@@ -2229,7 +2232,7 @@ async function openPdf(url,title,opt){opt=opt||{};
     for(let i=1;i<=doc.numPages;i++){if(pdfView!==tok)return;const pg=await doc.getPage(i);const v0=pg.getViewport({scale:1});const sc=W/v0.width;const v=pg.getViewport({scale:sc*dpr});
       const c=document.createElement('canvas');c.width=v.width;c.height=v.height;c.style.width=Math.round(v.width/dpr)+'px';c.style.height=Math.round(v.height/dpr)+'px';c.setAttribute('aria-label','Página '+i);
       body.appendChild(c);await pg.render({canvasContext:c.getContext('2d'),viewport:v}).promise}
-  }catch(e){if(pdfView!==tok)return;cnt.textContent='';body.innerHTML=`<div class="empty" style="color:#F2E8D2"><b style="color:#F2E8D2">No se pudo abrir el PDF</b>Revisa tu conexión e inténtalo de nuevo.</div>`}}
+  }catch(e){if(pdfView!==tok)return;cnt.textContent='';body.innerHTML=`<div class="empty" style="color:#F2E8D2"><b style="color:#F2E8D2">No se pudo abrir el PDF</b>${e&&e.code==='lost'?LOST_MSG:'Revisa tu conexión e inténtalo de nuevo.'}</div>`}}
 document.addEventListener('click',e=>{const a=e.target.closest&&e.target.closest('a[href^="/_blob/"],a[href^="/api/drive/file"]');if(!a||a.hasAttribute('data-raw'))return;e.preventDefault();e.stopPropagation();
   const t=a.getAttribute('data-title')||a.getAttribute('title')||a.textContent.trim();openPdf(a.getAttribute('href'),t)},true);
 document.addEventListener('keydown',e=>{if(e.key==='Escape'&&pdfView){e.stopPropagation();closePdf()}},true);
@@ -2435,7 +2438,7 @@ async function buildSetPdf(svc){
   const fit=(t,f,sz,max)=>{t=clean(t);if(f.widthOfTextAtSize(t,sz)<=max)return t;while(t&&f.widthOfTextAtSize(t+'...',sz)>max)t=t.slice(0,-1);return t+'...'};
   const parts=[];let failed=0;
   for(const r of rows){if(!r.pdf||!r.pdf.id){parts.push({r,n:0});continue}
-    try{const buf=await (await fetch(assetUrl(r.pdf.id))).arrayBuffer();
+    try{const buf=await fetchAsset(assetUrl(r.pdf.id));
       if((r.pdf.type||'').includes('pdf')){const src=await PDFDocument.load(buf,{ignoreEncryption:true});parts.push({r,src,n:src.getPageCount()})}
       else{const img=(r.pdf.type||'').includes('png')?await out.embedPng(buf):await out.embedJpg(buf);parts.push({r,img,n:1})}
     }catch(e){failed++;parts.push({r,n:0,err:true})}}
@@ -2504,7 +2507,7 @@ function tpDetect(lines){
     if(firstR.r===k&&!firstR.min)sc+=2;if(lastR.r===k&&!lastR.min)sc+=2;if(sc>best){best=sc;bk=k}}
   return NOTAS[bk]}
 const tpMed=a=>{a=a.filter(x=>isFinite(x)&&x>0).sort((x,y)=>x-y);return a.length?a[Math.floor(a.length/2)]:0};
-async function tpRead(url){const lib=await loadPdfJs();const buf=url instanceof Blob?await url.arrayBuffer():await (await fetch(url)).arrayBuffer();const doc=await lib.getDocument({data:new Uint8Array(buf)}).promise;const out=[];
+async function tpRead(url){const lib=await loadPdfJs();const buf=url instanceof Blob?await url.arrayBuffer():await fetchAsset(url);const doc=await lib.getDocument({data:new Uint8Array(buf)}).promise;const out=[];
   for(let p=1;p<=doc.numPages;p++){const pg=await doc.getPage(p);const tc=await pg.getTextContent();
     const it=tc.items.filter(i=>i.str&&i.str.trim()).map(i=>({s:i.str.replace(/\t/g,' '),x:i.transform[4],y:i.transform[5],w:i.width,h:Math.abs(i.transform[3])||10}));
     if(!it.length)continue;
@@ -2570,7 +2573,7 @@ async function viewMySong(sid,rid){const sv=svcLookup(sid);const r=sv&&(sv.setli
   const t=r.song+(n?' · capo '+n:r.key?' · '+r.key:'');if(!rowNeedsTp(r,n))return openPdf(assetUrl(r.pdf.id),t);
   toast('Preparando tus acordes…');try{const L=await loadPdfLib();const x=await rowLines(r,n);if(!x){toast('No pude leer los acordes de este PDF; te muestro el original.');return openPdf(assetUrl(r.pdf.id),r.song)}
     const doc=await L.PDFDocument.create();const F=await tpFonts(doc,L);tpWrite(doc,L,F,r.song,x.note,x.out);openPdf(new Blob([await doc.save()],{type:'application/pdf'}),t,{file:t+'.pdf'})}
-  catch(e){toast('No se pudo preparar el PDF. Revisa tu conexión.')}}
+  catch(e){toast(e&&e.code==='lost'?LOST_MSG:'No se pudo preparar el PDF. Revisa tu conexión.')}}
 // Todo el culto en un PDF: índice + cada canción como la toca esta persona.
 async function buildMySetPdf(sid){const svc=svcLookup(sid);if(!svc)return;const rows=svc.setlist||[];if(!rows.some(r=>r.pdf&&r.pdf.id)){toast('Este culto todavía no tiene PDFs de acordes.');return}
   toast('Armando el PDF del culto…');let L;try{L=await loadPdfLib()}catch(e){toast('No se pudo cargar el generador de PDF. Revisa tu conexión.');return}
@@ -2579,10 +2582,10 @@ async function buildMySetPdf(sid){const svc=svcLookup(sid);if(!svc)return;const 
   const parts=[];let failed=0,anyCapo=false;
   for(const r of rows){const p={r,n:0,capo:myCapo(r)};parts.push(p);if(p.capo)anyCapo=true;if(!r.pdf||!r.pdf.id)continue;const before=out.getPageCount();
     try{if(isPdfRow(r)&&rowNeedsTp(r,p.capo)){const x=await rowLines(r,p.capo);if(x){tpWrite(out,L,F,r.song,x.note,x.out);p.shape=x.shape}else p.raw=true}else p.raw=true;
-      if(p.raw){const buf=await (await fetch(assetUrl(r.pdf.id))).arrayBuffer();
+      if(p.raw){const buf=await fetchAsset(assetUrl(r.pdf.id));
         if(isPdfRow(r)){const src=await PDFDocument.load(buf,{ignoreEncryption:true});(await out.copyPages(src,src.getPageIndices())).forEach(pg=>out.addPage(pg));if(p.capo)p.noTp=true}
         else{const img=(r.pdf.type||'').includes('png')?await out.embedPng(buf):await out.embedJpg(buf);const pg=out.addPage([W,H]);const m=24,sc=Math.min((W-2*m)/img.width,(H-2*m)/img.height);pg.drawImage(img,{x:(W-img.width*sc)/2,y:H-m-img.height*sc,width:img.width*sc,height:img.height*sc});if(p.capo)p.noTp=true}}
-      p.start=before;p.n=out.getPageCount()-before}catch(e){failed++;p.err=true;while(out.getPageCount()>before)out.removePage(out.getPageCount()-1)}}
+      p.start=before;p.n=out.getPageCount()-before}catch(e){console.error('Arca PDF',r.song,e);failed++;p.err=e&&e.code==='lost'?'lost':true;while(out.getPageCount()>before)out.removePage(out.getPageCount()-1)}}
   const per=16,coverPages=Math.max(1,Math.ceil(rows.length/per));const me=ME&&byId('people',ME);
   for(let c=0;c<coverPages;c++){const pg=out.insertPage(c,[W,H]);let y=H-64;
     if(c===0){pg.drawText(fit(svc.title,F.hb,22,W-100),{x:50,y,size:22,font:F.hb,color:ink});y-=20;
@@ -2596,10 +2599,10 @@ async function buildMySetPdf(sid){const svc=svcLookup(sid);if(!svc)return;const 
       const sub=[r.artist,r.voice].filter(Boolean).join(' · ');if(sub)pg.drawText(fit(sub,F.hf,9,240),{x:74,y:y-13,size:9,font:F.hf,color:gray});
       pg.drawText(tpClean(soundKey(r)||'-'),{x:326,y,size:12,font:F.hb,color:ink});
       pg.drawText(p.capo?(p.noTp?'Capo '+p.capo+' (original)':'Capo '+p.capo+' · '+(p.shape||shapeOf(soundKey(r),p.capo))):'-',{x:396,y,size:10,font:p.capo?F.hb:F.hf,color:p.capo?acc:gray});
-      pg.drawText(p.n?String(p.start+coverPages+1):(p.err?'error':'sin PDF'),{x:530,y,size:p.n?11:9,font:F.hf,color:p.n?ink:rgb(.56,.35,0)});
+      pg.drawText(p.n?String(p.start+coverPages+1):(p.err==='lost'?'subir de nuevo':p.err?'error':'sin PDF'),{x:530,y,size:p.n?11:9,font:F.hf,color:p.n?ink:rgb(.56,.35,0)});
       y-=36})}
   const blob=new Blob([await out.save()],{type:'application/pdf'});const name=`${svc.title} ${svc.date}${me?' - '+me.name.split(/\s+/)[0]:''}.pdf`;
-  openPdf(blob,svc.title+' · todo el culto',{file:name});if(failed)toast(`${failed} PDF(s) no se pudieron leer.`);
+  openPdf(blob,svc.title+' · todo el culto',{file:name});if(failed)toast(parts.some(p=>p.err==='lost')?`${failed} PDF(s) se subieron antes de Google Drive y ya no existen: vuelve a subirlos en la canción.`:`${failed} PDF(s) no se pudieron leer.`);
   if(rows.some(r=>myCapo(r)&&isPdfRow(r))&&parts.some(p=>p.noTp))toast('Algunas canciones no se pudieron pasar a capo; van en su PDF original.')}
 let tp=null;
 function tpSourcesFor(so,verId){const many=songVersions(so).length>1;return songPdfs(so).filter(x=>!verId||x.verId===verId).map(x=>({key:x.key,pdf:x.pdf,verId:x.verId,label:'PDF '+(many?verTitle({label:x.verLabel})+' · ':'')+'en '+(x.key||'tono sin marcar')}))}
@@ -2612,7 +2615,7 @@ async function tpLoad(){if(!tp)return;tp.busy=true;tpDraw();
   try{const arr=await tpRead(tp.file||assetUrl(tp.src.pdf.id));
     if(!tp)return;if(!arr.length||!arr.some(tpIsChordLine)){tp.busy=false;tp.err=arr.length?'No encontré acordes en este PDF. Búscala abajo en LaCuerda o Cifra Club y pega los acordes, o sube otro PDF.':'Este PDF no tiene texto que se pueda leer.';tp.step=0;return tpDraw()}
     tp.lines=tpClassify(arr);tp.detected=tpDetect(tp.lines);if(!tp.from)tp.from=tp.detected;tp.err='';if(tp.step===0)tp.step=1}
-  catch(e){if(!tp)return;tp.err='No se pudo leer el PDF. Revisa tu conexión e inténtalo de nuevo.';tp.step=0}
+  catch(e){if(!tp)return;tp.err=e&&e.code==='lost'?LOST_MSG:'No se pudo leer el PDF. Revisa tu conexión e inténtalo de nuevo.';tp.step=0}
   tp.busy=false;tpDraw()}
 function tpSR(){const so=tp.songId&&byId('songs',tp.songId)||S.songs.find(x=>norm(x.title)===norm(tp.title||''));return {song:tp.title||(so&&so.title)||'',artist:so&&so.author||''}}
 function tpCifra(){const so=tp.songId&&byId('songs',tp.songId)||S.songs.find(x=>norm(x.title)===norm(tp.title||''));const sv=tp.sid&&svcLookup(tp.sid);const r=sv&&(sv.setlist||[]).find(x=>x.id===tp.rid);
