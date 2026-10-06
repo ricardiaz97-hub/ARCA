@@ -1,5 +1,5 @@
 <!doctype html><html><head><meta charset=utf8><meta name=viewport content="width=device-width,initial-scale=1,viewport-fit=cover"><style>:root{color-scheme:light;box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}html{scroll-padding-top:env(safe-area-inset-top,0px)}body{margin:0;padding:0;font:14px -apple-system,BlinkMacSystemFont,sans-serif;background:#faf9f5;color:#141413}img{max-width:100%}[hidden]:not([hidden=until-found i]){display:none!important}</style><script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-</head><body>
+</head><body class="locked">
 <title>Arca</title>
 <link rel="icon" type="image/png" href="/img/icon-192.png">
 <link rel="apple-touch-icon" href="/img/apple-touch-icon.png">
@@ -436,6 +436,30 @@ th{font-stretch:75%;font-weight:800;letter-spacing:.07em;font-size:.72rem;color:
 .fbl{display:inline-flex;align-items:center;border-radius:4px}.fbl:hover img{opacity:1}.fbl:focus-visible{outline:2px solid var(--gold);outline-offset:3px}
 .clr.armed{background:var(--bad);color:#fff;border-color:var(--bad)}
 .credit img{width:64px;height:auto;opacity:.92}
+/* Puerta de entrada: sin sesión no se muestra nada de Arca */
+#gate{display:none}
+body.locked{overflow:auto!important}
+body.locked .app,body.locked #drawerRoot,body.locked #tpRoot,body.locked #bulkRoot,body.locked #pdfRoot,body.locked #wizRoot{display:none!important}
+body.locked #gate{display:flex;position:fixed;inset:0;z-index:90;overflow:auto;background:radial-gradient(120% 80% at 50% 0%,#2a211b 0%,#181512 60%);color:#F2E8D2;padding:calc(24px + env(safe-area-inset-top,0px)) 16px calc(24px + env(safe-area-inset-bottom,0px))}
+.gate-in{margin:auto;width:100%;max-width:420px;text-align:center}
+.gate-logo{display:block;width:min(300px,80vw);height:auto;margin:0 auto 6px}
+.gate-sub{color:#C9B89A;margin:0 0 22px;font-size:1rem}
+.gate-card{background:#F7F0E2;color:#181512;border:2px solid #E85D04;border-radius:16px;padding:22px 20px;text-align:left;box-shadow:0 20px 60px rgba(0,0,0,.45)}
+.gate-card h1{font-size:1.35rem;margin:0 0 14px;text-align:center}
+.gate-card label{display:grid;gap:6px;font-weight:700;font-size:.9rem}
+.gate-card input{font:inherit;font-size:16px;padding:12px;border:2px solid #cdbfa6;border-radius:10px;background:#fff;color:#181512}
+.gate-card input:focus{outline:none;border-color:#E85D04}
+.gate-card .btn.primary{width:100%;justify-content:center;font-size:1.05rem;padding:13px}
+.gate-msg{min-height:1.2em;text-align:center;font-size:.9rem;margin:4px 0 0}
+.gate-links{display:flex;justify-content:space-between;gap:8px;flex-wrap:wrap;margin-top:6px}
+.gate-links button{background:none;border:0;color:#A33F00;font:inherit;font-size:.9rem;font-weight:700;cursor:pointer;padding:6px 0;text-decoration:underline}
+.gate-foot{display:flex;align-items:center;justify-content:center;gap:18px;margin-top:26px;opacity:.9}
+.gate-foot img{height:34px;width:auto}
+.gate-load{color:#C9B89A}
+.pwbox{position:relative;display:block}
+.pwbox input{width:100%;box-sizing:border-box;padding-right:80px}
+.pweye{position:absolute;right:6px;top:50%;transform:translateY(-50%);border:0;background:transparent;color:#A33F00;font:inherit;font-weight:800;font-size:.85rem;padding:8px 10px;cursor:pointer;border-radius:8px}
+.pweye:focus-visible{outline:2px solid #E85D04}
 .credit img.philly{display:block;width:58px;opacity:1;margin-bottom:2px}
 .credit b{display:block;color:var(--rail-fg);font-stretch:75%;font-weight:800;letter-spacing:.06em;text-transform:uppercase;font-size:.74rem}
 .mbar{display:none}
@@ -1072,6 +1096,7 @@ button.pdfc{cursor:pointer;font:inherit;font-size:.76rem;font-weight:800}
   <header class="mbar"><img class="lg" src="/img/arca-logo.webp" alt="Arca"><a class="fbl" href="https://www.facebook.com/taberolocuilta" target="_blank" rel="noopener" aria-label="Taber Olocuilta en Facebook"><img class="tblogo" src="/img/taber-logo.webp" alt="Taber Olocuilta"></a><button data-go="turno" class="mt"><span class="spark"></span>Tú</button></header>
   <main class="main" id="main"></main>
 </div>
+<div id="gate" role="main" aria-label="Iniciar sesión en Arca"><div class="gate-in"><p class="gate-load">Cargando…</p></div></div>
 <div id="drawerRoot"></div>
 <div id="toastRoot"></div>
 
@@ -1240,8 +1265,8 @@ const SB=window.supabase.createClient(SUPABASE_URL,SUPABASE_PUBLISHABLE_KEY);
 const db=SB;
 let CANWRITE=false,LASTERR='',ME_USER=null, LIVE_CHANNEL=null;
 
-function loadLocal(){try{const raw=localStorage.getItem('nave.data');if(raw){const d=JSON.parse(raw);COLS.forEach(c=>S[c]=d[c]||[])}}catch(e){}}
-function saveLocal(){try{localStorage.setItem('nave.data',JSON.stringify(S))}catch(e){}}
+function loadLocal(){return;try{const raw=localStorage.getItem('nave.data');if(raw){const d=JSON.parse(raw);COLS.forEach(c=>S[c]=d[c]||[])}}catch(e){}}
+function saveLocal(){return;try{localStorage.setItem('nave.data',JSON.stringify(S))}catch(e){}}
 function writeErr(e){
   if(e&&e.code==='42501')toast('No tienes permiso para editar.');
   else toast('No se pudo guardar. Revisa tu conexión e inténtalo de nuevo.');
@@ -1260,7 +1285,7 @@ async function save(col,obj){
       const j=S[col].findIndex(x=>x.id===rid);if(j>=0){if(prev)S[col][j]=prev;else S[col].splice(j,1)}
       writeErr(e);return null;
     }
-  }else{saveLocal();render()}
+  }else{toast('Inicia sesión para guardar.');return null}
   return rid;
 }
 async function remove(col,id){
@@ -1268,39 +1293,41 @@ async function remove(col,id){
   if(mode==='live'){
     try{const {error}=await SB.from('arca_records').delete().eq('collection',col).eq('id',id);if(error)throw error}
     catch(e){if(old)S[col].push(old);writeErr(e);return false}
-  }else{saveLocal();render()}
+  }else{toast('Inicia sesión para guardar.');return false}
   return true;
 }
 
+function lockArca(){document.body.classList.add('locked');COLS.forEach(c=>S[c]=[]);ME='';try{localStorage.removeItem('nave.data')}catch(e){}
+  if(LIVE_CHANNEL){try{SB.removeChannel(LIVE_CHANNEL)}catch(_){}LIVE_CHANNEL=null}const m=$('#main');if(m)m.innerHTML='';try{closeDrawer()}catch(_){}}
+function unlockArca(){document.body.classList.remove('locked');const g=document.getElementById('gate');if(g)g.innerHTML=''}
 function renderAuth(){
-  const m=$('#main');
-  if(!m)return;
-  m.innerHTML=`<section class="panel" style="max-width:520px;margin:8vh auto;text-align:center">
-    <div style="font-size:3rem;margin-bottom:8px">⛪</div>
-    <h1 style="margin-bottom:8px">Arca</h1>
-    <p class="muted" style="margin-bottom:22px">Inicia sesión para entrar a tu Arca.</p>
-    <form id="arcaAuth" style="display:grid;gap:12px;text-align:left">
-      <label>Correo<input id="arcaEmail" type="email" required autocomplete="email" placeholder="tu@correo.com"></label>
-      <label>Contraseña<input id="arcaPassword" type="password" required minlength="6" autocomplete="current-password" placeholder="••••••••"></label>
-      <div class="row" style="justify-content:center;margin-top:8px">
-        <button class="btn primary" type="submit">Entrar</button>
-        <button class="btn" type="button" id="arcaSignup">Crear cuenta</button>
-      </div>
-      <button class="linkb small" type="button" id="arcaForgot" style="justify-self:center">¿Olvidaste tu contraseña?</button>
-      <div id="arcaAuthMsg" class="small muted" style="text-align:center"></div>
+  lockArca();
+  const m=document.getElementById('gate');
+  if(!m||document.getElementById('arcaAuth'))return;
+  m.innerHTML=`<div class="gate-in">
+    <img class="gate-logo" src="/img/arca-logo.webp" alt="Arca" width="600" height="276">
+    <p class="gate-sub">Cultos, canciones y turnos de Philly</p>
+    <form id="arcaAuth" class="gate-card" style="display:grid;gap:12px" novalidate>
+      <h1>Iniciar sesión</h1>
+      <label>Correo<input id="arcaEmail" type="email" required autocomplete="email" inputmode="email" placeholder="tu@correo.com"></label>
+      <label>Contraseña<span class="pwbox"><input id="arcaPassword" type="password" required minlength="6" autocomplete="current-password" placeholder="••••••••"><button type="button" class="pweye" data-pwshow aria-label="Mostrar contraseña" aria-pressed="false">Ver</button></span></label>
+      <button class="btn primary" type="submit">Entrar</button>
+      <div id="arcaAuthMsg" class="gate-msg" role="status" aria-live="polite"></div>
+      <div class="gate-links"><button type="button" id="arcaForgot">¿Olvidaste tu contraseña?</button><button type="button" id="arcaSignup">Crear cuenta</button></div>
     </form>
-  </section>`;
+    <div class="gate-foot"><img src="/img/taber-logo.webp" alt="Taber Olocuilta" width="480" height="187"><img src="/img/philly-logo.webp" alt="Philly" width="500" height="275"></div>
+  </div>`;
   $('#arcaAuth').onsubmit=async e=>{
     e.preventDefault();
     const email=$('#arcaEmail').value.trim(),password=$('#arcaPassword').value;
-    const b=e.submitter;b.disabled=true;$('#arcaAuthMsg').textContent='Entrando…';
+    const b=e.submitter||$('#arcaAuth button[type=submit]');b.disabled=true;$('#arcaAuthMsg').textContent='Entrando…';
     const {data,error}=await SB.auth.signInWithPassword({email,password});
     b.disabled=false;
-    if(error){$('#arcaAuthMsg').textContent=error.message;return}
+    if(error){$('#arcaAuthMsg').textContent=/invalid login/i.test(error.message)?'Correo o contraseña incorrectos.':/not confirmed/i.test(error.message)?'Confirma tu correo primero (revisa tu bandeja).':error.message;return}
     if(data?.session){
-      ME_USER=data.session.user; mode='live'; CANWRITE=true;
+      ME_USER=data.session.user; mode='live'; CANWRITE=true; unlockArca();
       // Entramos a la app inmediatamente; la carga de datos ocurre después.
-      $('#arcaAuthMsg').textContent='¡Listo! Cargando Arca…';
+      
       renderLive(); render();
       // onAuthStateChange se encarga de cargar los datos; no lo hacemos dos veces.
       renderLive(); render();
@@ -1365,6 +1392,9 @@ async function subscribeData(){
 }
 
 if('serviceWorker' in navigator)window.addEventListener('load',()=>navigator.serviceWorker.register('/sw.js').catch(()=>{}));
+document.addEventListener('click',e=>{const b=e.target.closest&&e.target.closest('[data-pwshow]');if(!b)return;e.preventDefault();
+  const i=b.parentElement.querySelector('input');if(!i)return;const show=i.type==='password';i.type=show?'text':'password';
+  b.textContent=show?'Ocultar':'Ver';b.setAttribute('aria-pressed',String(show));b.setAttribute('aria-label',show?'Ocultar contraseña':'Mostrar contraseña');i.focus()});
 async function init(){
   renderNav();
   const dc=document.getElementById('driveConnect'); if(dc) dc.onclick=connectDrive;
@@ -1375,7 +1405,7 @@ async function init(){
   // Así el login funciona aunque la página haya arrancado sin sesión.
   SB.auth.onAuthStateChange((_event,sess)=>{
     if(sess){
-      ME_USER=sess.user; CANWRITE=true; mode='live';maybeForcePw(sess.user);
+      ME_USER=sess.user; CANWRITE=true; mode='live';unlockArca();maybeForcePw(sess.user);
       subscribeData().then(async()=>{await resolveIdentity();renderLive();render()}).catch(e=>{console.error('Arca / Supabase:',e);toast('Supabase: '+(e?.message||e?.code||'error desconocido'))});
     }else{
       ME_USER=null; mode='auth'; renderLive(); renderAuth();
@@ -1383,7 +1413,7 @@ async function init(){
   });
   const {data:{session}}=await SB.auth.getSession();
   if(!session){mode='auth';renderLive();renderAuth();return}
-  ME_USER=session.user; mode='live'; CANWRITE=true;maybeForcePw(session.user);
+  ME_USER=session.user; mode='live'; CANWRITE=true;unlockArca();maybeForcePw(session.user);
   renderLive(); render();
   try{await subscribeData();await resolveIdentity();renderLive();render();}
   catch(e){console.error('Arca / Supabase:',e);toast('Supabase: '+(e?.message||e?.code||'error desconocido'));console.error('SUPABASE ERROR',e);render()}
@@ -1456,6 +1486,7 @@ function fieldHtml(f){
   if(f.type==='html')return f.html;
   const list=f.list?` list="${id}_l"`:'';
   const dl=f.list?`<datalist id="${id}_l">${f.list.map(x=>`<option value="${esc(x)}">`).join('')}</datalist>`:'';
+  if(f.type==='password')return `<div class="field">${lab}<span class="pwbox"><input id="${id}" type="password" value="${esc(v)}" placeholder="${esc(f.ph||'')}" autocomplete="new-password"${f.required?' required':''}><button type="button" class="pweye" data-pwshow aria-label="Mostrar contraseña" aria-pressed="false">Ver</button></span></div>`;
   return `<div class="field">${lab}<input id="${id}" type="${f.type||'text'}" value="${esc(v)}" placeholder="${esc(f.ph||'')}"${list}${f.required?' required':''}${f.min!=null?` min="${f.min}"`:''}>${dl}</div>`;
 }
 function flat(fields){return fields.flatMap(f=>f.type==='pair'?f.fields:[f]).filter(f=>f.type!=='html')}
@@ -2261,7 +2292,7 @@ function noConn(){return `<section class="panel noconn" role="alert">
   </ol>
   <p class="small">Solo lo haces una vez. Después, Arca abrirá directo con tus turnos.</p>
   <button class="tb" onclick="location.reload()">Ya lo hice, volver a intentar</button></section>`}
-function renderNav(){
+function renderNav(){if(mode!=='live'||!ME_USER)return;
   const mp=ME&&byId('people',ME);
   const al=myAlerts();const badge=al.total?`<span class="nbadge" aria-label="${esc(alertTitle(al))}">${al.total>9?'9+':al.total}</span>`:'';
   $('#navItems').innerHTML=NAV.map(([k,l])=>`<button class="nav" data-go="${k}" ${ui.route===k?'aria-current="page"':''} ${k==='turno'&&al.total?`title="${esc(alertTitle(al))}"`:''}>${k==='turno'&&mp&&mp.photo?`<img class="navph" src="${assetUrl(mp.photo)}" alt="">`:svg(k)}<span>${l}</span>${k==='turno'?badge:''}</button>`).join('');
@@ -3193,7 +3224,7 @@ function palRender(){
   $('#palList').querySelectorAll('.opt').forEach(li=>{li.onmousemove=()=>{if(+li.dataset.pi!==pal.sel)palSelect(+li.dataset.pi)};li.onclick=()=>palRun(+li.dataset.pi)});
   palSelect(Math.min(pal.sel,Math.max(pal.items.length-1,0)));
 }
-function openPalette(){
+function openPalette(){if(mode!=='live'||!ME_USER)return;
   if(pal)return;if(drawerOpen)closeDrawer();pal={q:'',sel:0,items:[]};
   const root=document.createElement('div');root.id='palRoot';
   root.innerHTML=`<div class="pal-scrim"></div><div class="pal" role="dialog" aria-modal="true" aria-label="Buscar o crear"><input id="palInput" type="text" placeholder="Busca personas, cultos, tareas… o escribe lo que quieres crear" autocomplete="off" role="combobox" aria-controls="palList" aria-expanded="true"><ul id="palList" role="listbox"></ul><div class="foot"><span>↑ ↓ moverse</span><span>↵ abrir</span><span>esc cerrar</span></div></div>`;
@@ -3215,7 +3246,7 @@ function healPdfs(){for(const sv of S.services)for(const r of (sv.setlist||[])){
   const so=S.songs.find(x=>norm(x.title)===norm(r.song));if(!so)continue;const v=rowVer(r,so),k=normKey(r.pdfKey||r.key);
   const drv=L=>(L||[]).filter(x=>x.pdf&&isDriveAsset(x.pdf.id));const mine=drv(v&&v.pdfs),all=drv(songPdfs(so));
   const c=mine.find(x=>x.key===k)||all.find(x=>x.key===k)||mine[0]||all[0];if(c){r.pdf=c.pdf;r.pdfKey=c.key||r.pdfKey}}}
-function render(){if(DRAG)return;try{syncLogout()}catch(e){}try{healPdfs()}catch(e){console.warn('healPdfs',e)}
+function render(){if(DRAG)return;if(mode!=='live'||!ME_USER){if(mode!=='live'&&mode!=='loading')renderAuth();return}try{syncLogout()}catch(e){}try{healPdfs()}catch(e){console.warn('healPdfs',e)}
   const a=document.activeElement,fid=a&&a.id&&$('#main').contains(a)?a.id:null,sel=fid&&a.selectionStart!=null?[a.selectionStart,a.selectionEnd]:null,val=fid&&a.tagName==='INPUT'&&!a.dataset.tkadd?a.value:null;
   renderNav();
   document.body.classList.toggle('simple',ui.route==='turno');
