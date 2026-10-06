@@ -1,6 +1,14 @@
 <!doctype html><html><head><meta charset=utf8><meta name=viewport content="width=device-width,initial-scale=1,viewport-fit=cover"><style>:root{color-scheme:light;box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}html{scroll-padding-top:env(safe-area-inset-top,0px)}body{margin:0;padding:0;font:14px -apple-system,BlinkMacSystemFont,sans-serif;background:#faf9f5;color:#141413}img{max-width:100%}[hidden]:not([hidden=until-found i]){display:none!important}</style><script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 </head><body>
 <title>Arca</title>
+<link rel="icon" type="image/png" href="/img/icon-192.png">
+<link rel="apple-touch-icon" href="/img/apple-touch-icon.png">
+<link rel="manifest" href="/manifest.webmanifest">
+<meta name="theme-color" content="#181512">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="Arca">
+<meta name="apple-mobile-web-app-status-bar-style" content="black">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Archivo:ital,wdth,wght@0,62..125,400..900;1,100,500&display=swap">
@@ -428,6 +436,7 @@ th{font-stretch:75%;font-weight:800;letter-spacing:.07em;font-size:.72rem;color:
 .fbl{display:inline-flex;align-items:center;border-radius:4px}.fbl:hover img{opacity:1}.fbl:focus-visible{outline:2px solid var(--gold);outline-offset:3px}
 .clr.armed{background:var(--bad);color:#fff;border-color:var(--bad)}
 .credit img{width:64px;height:auto;opacity:.92}
+.credit img.philly{display:block;width:58px;opacity:1;margin-bottom:2px}
 .credit b{display:block;color:var(--rail-fg);font-stretch:75%;font-weight:800;letter-spacing:.06em;text-transform:uppercase;font-size:.74rem}
 .mbar{display:none}
 
@@ -1052,15 +1061,15 @@ button.pdfc{cursor:pointer;font:inherit;font-size:.76rem;font-weight:800}
 
 <div class="app">
   <nav class="rail" aria-label="Secciones">
-    <div class="brand"><img src="/_blob/f65635c415f4934a3cc6771d3c00e5aa" alt="Arca" width="720" height="408"></div>
+    <div class="brand"><img src="/img/arca-logo.webp" alt="Arca" width="600" height="276"></div>
     <button class="cmd" data-act="palette" aria-label="Buscar o crear (Ctrl o Cmd + K)"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><circle cx="11" cy="11" r="7"/><path d="m20 20-3.5-3.5"/></svg><span>Buscar o crear</span><span class="kbd">Ctrl K</span></button>
     <div id="navItems" style="display:contents"></div>
     <div class="rail-foot">
-      <div class="credit"><a class="fbl" href="https://www.facebook.com/taberolocuilta" target="_blank" rel="noopener" aria-label="Taber Olocuilta en Facebook"><img src="/_blob/8a6442e7336bc24640b0a4cb2f9df304" alt="Taber Olocuilta" width="480" height="175"></a><span><b>Philly</b>Ministerio de alabanza</span></div>
+      <div class="credit"><a class="fbl" href="https://www.facebook.com/taberolocuilta" target="_blank" rel="noopener" aria-label="Taber Olocuilta en Facebook"><img src="/img/taber-logo.webp" alt="Taber Olocuilta" width="480" height="187"></a><span><img class="philly" src="/img/philly-logo.webp" alt="Philly" width="500" height="275">Ministerio de alabanza</span></div>
       <div class="live" id="liveState" role="button" tabindex="0" title="Abrir inicio de sesión"><span class="dot"></span><span>Conectando…</span></div><button class="tb sm" id="driveConnect" style="margin-top:8px;width:100%">Conectar Google Drive</button><button class="linkb small" id="arcaLogout" style="margin-top:8px;width:100%" hidden>Cerrar sesión</button>
     </div>
   </nav>
-  <header class="mbar"><img class="lg" src="/_blob/f65635c415f4934a3cc6771d3c00e5aa" alt="Arca"><a class="fbl" href="https://www.facebook.com/taberolocuilta" target="_blank" rel="noopener" aria-label="Taber Olocuilta en Facebook"><img class="tblogo" src="/_blob/8a6442e7336bc24640b0a4cb2f9df304" alt="Taber Olocuilta"></a><button data-go="turno" class="mt"><span class="spark"></span>Tú</button></header>
+  <header class="mbar"><img class="lg" src="/img/arca-logo.webp" alt="Arca"><a class="fbl" href="https://www.facebook.com/taberolocuilta" target="_blank" rel="noopener" aria-label="Taber Olocuilta en Facebook"><img class="tblogo" src="/img/taber-logo.webp" alt="Taber Olocuilta"></a><button data-go="turno" class="mt"><span class="spark"></span>Tú</button></header>
   <main class="main" id="main"></main>
 </div>
 <div id="drawerRoot"></div>
@@ -1355,6 +1364,7 @@ async function subscribeData(){
     });
 }
 
+if('serviceWorker' in navigator)window.addEventListener('load',()=>navigator.serviceWorker.register('/sw.js').catch(()=>{}));
 async function init(){
   renderNav();
   const dc=document.getElementById('driveConnect'); if(dc) dc.onclick=connectDrive;
@@ -2269,7 +2279,7 @@ function vInicio(){
     <div><h2>Todos a bordo del Arca</h2><p class="muted" style="margin:.7em 0 0;max-width:52ch">Lo que agregues aquí lo ve tu equipo en vivo. Que nadie falte y que todos tengan con quién servir.</p>
     <ul><li><span class="spark"></span><span><b>Servicios</b> · orden del culto, horarios y tonalidades</span></li><li><span class="spark"></span><span><b>Alabanzas</b> · listas, cifras y el PDF del culto</span></li><li><span class="spark"></span><span><b>Equipos</b> · quién sirve cada día y quién confirmó</span></li><li><span class="spark"></span><span><b>Tareas</b> · proyectos con responsables y fechas</span></li></ul>
     <div class="row">${ADMIN()?`<button class="btn primary" data-act="newTeam">Crear un equipo</button>`:''}<button class="btn ghost" data-act="loadSamples">Cargar datos de ejemplo</button></div></div>
-    <img src="/_blob/335bb339fe3ebae4c320e69482dc0310" alt="Ilustración de Philly: capibara con guitarra sentado sobre un amplificador" width="900" height="900" loading="lazy">
+    <img src="/img/philly-logo.webp" alt="Philly" width="500" height="275" loading="lazy">
   </section>`;
 
   const nowM=now.getHours()*60+now.getMinutes();

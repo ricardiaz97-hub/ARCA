@@ -1,0 +1,17 @@
+{
+  "name": "Arca · Philly",
+  "short_name": "Arca",
+  "description": "Cultos, canciones y turnos del ministerio de alabanza Philly.",
+  "start_url": "/#turno",
+  "scope": "/",
+  "display": "standalone",
+  "orientation": "portrait",
+  "background_color": "#181512",
+  "theme_color": "#181512",
+  "lang": "es",
+  "icons": [
+    { "src": "/img/icon-192.png", "sizes": "192x192", "type": "image/png", "purpose": "any" },
+    { "src": "/img/icon-512.png", "sizes": "512x512", "type": "image/png", "purpose": "any" },
+    { "src": "/img/icon-maskable-512.png", "sizes": "512x512", "type": "image/png", "purpose": "maskable" }
+  ]
+}
