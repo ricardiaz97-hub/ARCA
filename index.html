@@ -1057,7 +1057,7 @@ button.pdfc{cursor:pointer;font:inherit;font-size:.76rem;font-weight:800}
     <div id="navItems" style="display:contents"></div>
     <div class="rail-foot">
       <div class="credit"><a class="fbl" href="https://www.facebook.com/taberolocuilta" target="_blank" rel="noopener" aria-label="Taber Olocuilta en Facebook"><img src="/_blob/8a6442e7336bc24640b0a4cb2f9df304" alt="Taber Olocuilta" width="480" height="175"></a><span><b>Philly</b>Ministerio de alabanza</span></div>
-      <div class="live" id="liveState" role="button" tabindex="0" title="Abrir inicio de sesión"><span class="dot"></span><span>Conectando…</span></div><button class="tb sm" id="driveConnect" style="margin-top:8px;width:100%">Conectar Google Drive</button>
+      <div class="live" id="liveState" role="button" tabindex="0" title="Abrir inicio de sesión"><span class="dot"></span><span>Conectando…</span></div><button class="tb sm" id="driveConnect" style="margin-top:8px;width:100%">Conectar Google Drive</button><button class="linkb small" id="arcaLogout" style="margin-top:8px;width:100%" hidden>Cerrar sesión</button>
     </div>
   </nav>
   <header class="mbar"><img class="lg" src="/_blob/f65635c415f4934a3cc6771d3c00e5aa" alt="Arca"><a class="fbl" href="https://www.facebook.com/taberolocuilta" target="_blank" rel="noopener" aria-label="Taber Olocuilta en Facebook"><img class="tblogo" src="/_blob/8a6442e7336bc24640b0a4cb2f9df304" alt="Taber Olocuilta"></a><button data-go="turno" class="mt"><span class="spark"></span>Tú</button></header>
@@ -1358,6 +1358,7 @@ async function subscribeData(){
 async function init(){
   renderNav();
   const dc=document.getElementById('driveConnect'); if(dc) dc.onclick=connectDrive;
+  const lo=document.getElementById('arcaLogout'); if(lo) lo.onclick=logout;
   const ls=document.getElementById('liveState'); if(ls){ls.onclick=()=>{if(mode==='auth')renderAuth()};ls.onkeydown=e=>{if((e.key==='Enter'||e.key===' ')&&mode==='auth'){e.preventDefault();renderAuth()}}}
   refreshDriveStatus();driveReturnNotice();
   // Escuchamos cambios de sesión ANTES de comprobar la sesión actual.
@@ -1766,6 +1767,9 @@ function changeMyPassword(forced){openForm({title:forced?'Pon tu contraseña nue
     const {error}=await SB.auth.updateUser({password:v.pw1,data:{must_change_password:false}});
     if(error){toast('No se pudo cambiar: '+error.message);return setTimeout(()=>changeMyPassword(forced),300)}
     toast('Listo: tu contraseña nueva ya está guardada.')}})}
+async function logout(){if(!confirm('¿Cerrar sesión en Arca?'))return;try{await SB.auth.signOut()}catch(e){}
+  try{localStorage.removeItem('arca.me');localStorage.removeItem('arca.meok')}catch(e){}pwAsked=false;location.replace(location.pathname)}
+function syncLogout(){const b=document.getElementById('arcaLogout');if(b)b.hidden=!ME_USER}
 let pwAsked=false;
 function maybeForcePw(user){if(pwAsked||!user?.user_metadata?.must_change_password)return;pwAsked=true;setTimeout(()=>changeMyPassword(true),600)}
 async function approveReq(id){const r=byId('requests',id);if(!r)return;
@@ -1957,7 +1961,7 @@ function vTurno(){
   const sup=SUPERVISORS.includes(ME)?superPanel():'';
   const later=next.length?`<details class="tcard tfold" data-fold="fechas" ${foldAttr('fechas')}><summary><h2 class="th2">Tus próximas fechas</h2><p class="small">${next.length} ${next.length===1?'fecha':'fechas'}</p></summary><ul class="tnext">${next.map(y=>{const b=(y.assignments||[]).find(a=>a.personId===ME);return `<li><button class="linkb tnext-open" data-tsel="${y.id}"><b>${esc(LDOW[parse(y.date).getDay()].replace(/^./,c=>c.toUpperCase()))} ${parse(y.date).getDate()} de ${esc(parse(y.date).toLocaleDateString('es',{month:'long'}))}</b> · ver</button><span>${esc(ampm(y.time))} · ${esc(y.title)}${isLead(b)?' · <strong>diriges</strong>':''}${b.status==='declinado'?' · no vas':b.status!=='confirmado'?' · <em class="pendq">sin confirmar</em>':''}</span>${b.status!=='confirmado'&&b.status!=='declinado'?`<span class="tbtns" style="margin:6px 0 0"><button class="tb sm ok" data-can="${y.id}">Confirmo</button><button class="tb sm warn" data-cant="${y.id}">No puedo</button></span>`:''}</li>`}).join('')}</ul></details>`:'';
   return `<div class="turno">${head}${CANWRITE===false&&mode==='live'?`<div class="info warn" role="alert" style="margin-bottom:14px"><b>Estás viendo Arca como invitado.</b> Puedes ver todo, pero no confirmar. Suele pasar al abrir el link desde WhatsApp o Gmail: ábrelo en Safari o Chrome con tu sesión de Arca iniciada (o desde la app de Arca), con el correo de tu cuenta de Arca.</div>`:''}${mgr}${svcFold}${devoPanel()}${myTasksPanel()}${reviewPanel()}${keysPanel()}${reqPanel()}${pwPanel()}${sup}${later}${helpLine()}</div>`}
-function helpLine(){return `<p class="small center"><button class="linkb" data-tourstart>¿Cómo se usa Arca?</button> · <button class="linkb" data-go="inicio">Ir a la app completa</button> · <button class="linkb" data-mypw>Cambiar mi contraseña</button></p>`}
+function helpLine(){return `<p class="small center"><button class="linkb" data-tourstart>¿Cómo se usa Arca?</button> · <button class="linkb" data-go="inicio">Ir a la app completa</button> · <button class="linkb" data-mypw>Cambiar mi contraseña</button> · <button class="linkb" data-logout>Cerrar sesión</button></p>`}
 async function setMyStatus(sid,st){const svc=svcLookup(sid);if(!svc)return;
   const list=(svc.assignments||[]).map(a=>a.personId===ME?{...a,status:st}:a);
   const ok=await save('services',{...svc,assignments:list});ui.saveFail=ok?'':sid;if(ok)toast(st==='declinado'?'Listo. Quedó marcado que no puedes ir.':'Listo. Quedaste confirmado.');render()}
@@ -3148,7 +3152,7 @@ function healPdfs(){for(const sv of S.services)for(const r of (sv.setlist||[])){
   const so=S.songs.find(x=>norm(x.title)===norm(r.song));if(!so)continue;const v=rowVer(r,so),k=normKey(r.pdfKey||r.key);
   const drv=L=>(L||[]).filter(x=>x.pdf&&isDriveAsset(x.pdf.id));const mine=drv(v&&v.pdfs),all=drv(songPdfs(so));
   const c=mine.find(x=>x.key===k)||all.find(x=>x.key===k)||mine[0]||all[0];if(c){r.pdf=c.pdf;r.pdfKey=c.key||r.pdfKey}}}
-function render(){if(DRAG)return;try{healPdfs()}catch(e){console.warn('healPdfs',e)}
+function render(){if(DRAG)return;try{syncLogout()}catch(e){}try{healPdfs()}catch(e){console.warn('healPdfs',e)}
   const a=document.activeElement,fid=a&&a.id&&$('#main').contains(a)?a.id:null,sel=fid&&a.selectionStart!=null?[a.selectionStart,a.selectionEnd]:null,val=fid&&a.tagName==='INPUT'&&!a.dataset.tkadd?a.value:null;
   renderNav();
   document.body.classList.toggle('simple',ui.route==='turno');
@@ -3203,6 +3207,7 @@ document.addEventListener('click',async e=>{
   const pwn=e.target.closest&&e.target.closest('[data-pwno]');if(pwn){if(!pwn.dataset.arm){pwn.dataset.arm=1;pwn.textContent='¿Seguro? Toca otra vez';return}return pwResolve(pwn.dataset.pwno,'dismiss')}
   const pwc=e.target.closest&&e.target.closest('[data-pwcopy]');if(pwc){try{await navigator.clipboard.writeText(pwc.dataset.pwcopy);toast('Mensaje copiado.')}catch(x){toast('No se pudo copiar.')}return}
   if(e.target.closest&&e.target.closest('[data-mypw]'))return changeMyPassword(false);
+  if(e.target.closest&&e.target.closest('[data-logout]'))return logout();
   const rqn=e.target.closest&&e.target.closest('[data-reqno]');if(rqn){if(!rqn.dataset.arm){rqn.dataset.arm=1;rqn.textContent='¿Seguro? Toca otra vez';return}const r=byId('requests',rqn.dataset.reqno);if(r&&await save('requests',{...r,status:'descartada',reviewedBy:ME}))toast('Solicitud descartada.');return render()}
   const rqs=e.target.closest&&e.target.closest('[data-reqsent]');if(rqs){const r=byId('requests',rqs.dataset.reqsent);if(r)setTimeout(async()=>{if(await save('requests',{...r,accessSent:true,accessSentAt:new Date().toISOString()}))toast('Listo: '+(r.name||'')+' ya tiene su acceso.');render()},rqs.tagName==='A'?800:0);if(rqs.tagName!=='A')return;return}
   if(e.target.closest&&e.target.closest('[data-invset]'))return setInviteUrl();
