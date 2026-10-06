@@ -5,7 +5,7 @@ export default async function handler(req, res) {
   try {
     const id = String(req.query?.id || ''); if (!id) return res.status(400).end('missing id');
     const token = await getDriveToken(); if (!token) return res.status(401).end('Drive no conectado');
-    const drive = driveClient(token);
+    const drive = driveClient(token, req);
     const meta = await drive.files.get({ fileId:id, fields:'name,mimeType,size' });
     const r = await drive.files.get({ fileId:id, alt:'media' }, { responseType:'stream' });
     res.setHeader('Content-Type', meta.data.mimeType || 'application/octet-stream');

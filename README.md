@@ -1,33 +1,31 @@
 # Arca + Google Drive
 
-Esta versión mantiene Supabase como base de datos y agrega Google Drive como almacenamiento de archivos.
+Supabase guarda los datos; Google Drive guarda los archivos (PDFs, fotos).
 
-## Variables de Vercel
-Configura estas variables en el proyecto:
+## Si Drive no conecta: abre `https://TU-DOMINIO/api/drive/diagnose`
+Esa página revisa cada paso (variables, tabla de Supabase, redirect URI, acceso a Drive)
+y dice exactamente qué falta. No muestra ningún secreto.
 
-- `SUPABASE_URL` = URL del proyecto Arca
-- `SUPABASE_PUBLISHABLE_KEY` = publishable key de Supabase
-- `SUPABASE_SERVICE_ROLE_KEY` = service-role key de Supabase (**solo Vercel, nunca en el HTML**)
-- `GOOGLE_CLIENT_ID` = `166131182387-ihr46hqkgiu85jl4rp66s3u6032lle4n.apps.googleusercontent.com`
-- `GOOGLE_CLIENT_SECRET` = client secret de Google (**solo Vercel, nunca en el HTML ni en el chat**)
-- `GOOGLE_REDIRECT_URI` = `https://TU-DOMINIO/api/drive/callback`
-- `ARCA_DRIVE_ADMIN_EMAIL` = correo de la cuenta de Arca que será dueña del Drive de Arca
-- `GOOGLE_DRIVE_FOLDER_NAME` = `Arca`
+## Checklist
+1. **Vercel → Settings → Environment Variables** (Production), y después **Redeploy**
+   (las variables nuevas no se aplican a despliegues ya hechos):
+   - `SUPABASE_URL` = `https://iflkvvxnugfowplrjtbe.supabase.co`
+   - `SUPABASE_PUBLISHABLE_KEY` = la publishable key (`sb_publishable_…`)
+   - `SUPABASE_SERVICE_ROLE_KEY` = la **secret / service_role** key (no la publishable)
+   - `GOOGLE_CLIENT_ID` = `166131182387-ihr46hqkgiu85jl4rp66s3u6032lle4n.apps.googleusercontent.com`
+   - `GOOGLE_CLIENT_SECRET` = el client secret del mismo cliente OAuth
+   - `GOOGLE_REDIRECT_URI` = `https://TU-DOMINIO/api/drive/callback` (opcional: si no está, se usa el dominio actual)
+   - `ARCA_DRIVE_ADMIN_EMAIL` = correo con el que inicias sesión en Arca (solo esa cuenta puede conectar Drive)
+   - `GOOGLE_DRIVE_FOLDER_NAME` = `Arca` (opcional)
+2. **Supabase → SQL Editor**: ejecuta `drive-setup.sql` una vez.
+3. **Google Cloud** (proyecto 166131182387):
+   - APIs y servicios → Biblioteca → **Google Drive API → Habilitar**.
+   - Google Auth Platform → Clientes → cliente web → *URIs de redireccionamiento autorizados*:
+     `https://TU-DOMINIO/api/drive/callback` (exacto: https, sin `/` final, mismo dominio que usas).
+   - Google Auth Platform → Público: si está en **Prueba**, agrega tu correo de Google como
+     usuario de prueba. En modo Prueba el permiso caduca cada 7 días; pásalo a **Producción**
+     (el scope `drive.file` no requiere verificación).
+4. En Arca: inicia sesión → **Conectar Google Drive** → acepta.
 
-## Supabase
-Ejecuta `drive-setup.sql` una sola vez en SQL Editor.
-
-## Google OAuth
-En Google Auth Platform → Clientes → el cliente web de Arca, agrega como URI de redireccionamiento autorizado:
-
-`https://TU-DOMINIO/api/drive/callback`
-
-No pongas el client secret en el frontend.
-
-## Flujo
-1. Ricardo inicia sesión en Arca.
-2. Ricardo pulsa “Conectar Google Drive”.
-3. Google autoriza el acceso.
-4. El backend guarda el refresh token en `arca_private` usando la service-role key.
-5. Arca crea una carpeta `Arca` en Drive y guarda allí los archivos.
-6. Los archivos se sirven mediante el backend, sin hacer público el Drive.
+## Límite
+Vercel no acepta subidas de más de 4.5 MB por petición; Arca avisa si un archivo pasa de 4 MB.

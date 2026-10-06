@@ -1075,23 +1075,32 @@ const isDriveAsset=id=>String(id||'').startsWith(DRIVE_ID_PREFIX);
 const assetUrl=id=>isDriveAsset(id)?'/api/drive/file?id='+encodeURIComponent(assetId(id)):'/_blob/'+encodeURIComponent(id||'');
 const assetHref=id=>assetUrl(id);
 async function arcaApi(path,opts={}){const {data}=await SB.auth.getSession();const h=new Headers(opts.headers||{});if(data?.session?.access_token)h.set('Authorization','Bearer '+data.session.access_token);return fetch(path,{...opts,headers:h})}
-let DRIVE_CONNECTED=false;
+let DRIVE_CONNECTED=false,DRIVE_ERROR='';
+const DRIVE_MAX=4*1024*1024; /* Vercel corta los cuerpos de más de 4.5 MB */
 async function refreshDriveStatus(){
-  try{const r=await fetch('/api/drive/status');const j=await r.json();DRIVE_CONNECTED=!!j.connected;ASSETS=DRIVE_CONNECTED?driveAssets():null;const b=document.getElementById('driveConnect');if(b){b.textContent=DRIVE_CONNECTED?'✓ Google Drive conectado':'Conectar Google Drive';b.disabled=false}
+  try{const r=await fetch('/api/drive/status',{cache:'no-store'});if(r.status===404)throw new Error('No se encontró /api/drive/status: la carpeta api/ no se desplegó en Vercel.');const j=await r.json();DRIVE_CONNECTED=!!j.connected;DRIVE_ERROR=j.error||'';ASSETS=DRIVE_CONNECTED?driveAssets():null;const b=document.getElementById('driveConnect');if(b){b.textContent=DRIVE_CONNECTED?'✓ Google Drive conectado':DRIVE_ERROR?'⚠ Drive sin configurar':'Conectar Google Drive';b.title=DRIVE_ERROR;b.disabled=false}
     if(mode==='auth') renderAuth(); else render();
-  }catch(e){DRIVE_CONNECTED=false;ASSETS=null; if(mode==='auth') renderAuth(); else render()}}
+  }catch(e){DRIVE_CONNECTED=false;DRIVE_ERROR=e.message||'Drive no responde';ASSETS=null;const b=document.getElementById('driveConnect');if(b){b.textContent='⚠ Drive sin configurar';b.title=DRIVE_ERROR} if(mode==='auth') renderAuth(); else render()}}
 function driveAssets(){return {
   async upload(file,{type}={}){
     const blob=file instanceof Blob?file:file;
     const name=file.name||('arca-'+Date.now());
     const mime=type||file.type||'application/octet-stream';
+    if(blob.size>DRIVE_MAX)throw Object.assign(new Error('too_large'),{code:'too_large'});
     const r=await arcaApi('/api/drive/upload',{method:'POST',headers:{'Content-Type':mime,'X-Arca-Name':encodeURIComponent(name),'X-Arca-Type':mime},body:blob});
-    const j=await r.json();if(!r.ok)throw Object.assign(new Error(j.message||j.error||'upload_failed'),{code:j.error});
+    if(r.status===413)throw Object.assign(new Error('too_large'),{code:'too_large'});
+    const j=await r.json().catch(()=>({error:'upload_failed',message:'Respuesta inválida del servidor ('+r.status+')'}));if(!r.ok)throw Object.assign(new Error(j.message||j.error||'upload_failed'),{code:j.error});
     return {id:DRIVE_ID_PREFIX+j.id,name:j.name,contentType:j.contentType||mime,url:assetUrl(DRIVE_ID_PREFIX+j.id)};
   },
   async delete(id){const r=await arcaApi('/api/drive/delete',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({id:assetId(id)})});if(!r.ok)throw new Error('delete_failed');return true}
 }}
-async function connectDrive(){try{const r=await arcaApi('/api/drive/auth');const j=await r.json();if(!r.ok)throw new Error(j.error||'No autorizado');location.href=j.url}catch(e){toast('No se pudo iniciar Google Drive: '+e.message)}}
+async function connectDrive(){
+  if(DRIVE_ERROR){toast('Google Drive: '+DRIVE_ERROR);window.open('/api/drive/diagnose','_blank');return}
+  if(DRIVE_CONNECTED&&!confirm('Google Drive ya está conectado. ¿Volver a conectarlo (por ejemplo con otra cuenta)?'))return;
+  try{const {data}=await SB.auth.getSession();if(!data?.session)throw new Error('Inicia sesión en Arca primero.');
+    const r=await arcaApi('/api/drive/auth');const j=await r.json().catch(()=>({message:'El servidor respondió '+r.status+'. ¿Se desplegó la carpeta api/ en Vercel?'}));if(!r.ok||!j.url)throw new Error(j.message||j.error||'No autorizado');location.href=j.url}
+  catch(e){toast('No se pudo iniciar Google Drive: '+e.message+' — revisa /api/drive/diagnose')}}
+function driveReturnNotice(){const q=new URLSearchParams(location.search);if(q.get('drive')!=='connected')return;toast('✓ Google Drive conectado. Los archivos se guardarán en la carpeta Arca.');q.delete('drive');history.replaceState(null,'',location.pathname+(q.toString()?'?'+q:'')+location.hash)}
 /* ---------- constants ---------- */
 const COLS=['people','teams','songs','services','events','projects','tasks','recurring','settings','requests','devos','devoviews','devocomments','setlists'];
 const S={}; COLS.forEach(c=>S[c]=[]);
@@ -1339,7 +1348,7 @@ async function init(){
   renderNav();
   const dc=document.getElementById('driveConnect'); if(dc) dc.onclick=connectDrive;
   const ls=document.getElementById('liveState'); if(ls){ls.onclick=()=>{if(mode==='auth')renderAuth()};ls.onkeydown=e=>{if((e.key==='Enter'||e.key===' ')&&mode==='auth'){e.preventDefault();renderAuth()}}}
-  refreshDriveStatus();
+  refreshDriveStatus();driveReturnNotice();
   // Escuchamos cambios de sesión ANTES de comprobar la sesión actual.
   // Así el login funciona aunque la página haya arrancado sin sesión.
   SB.auth.onAuthStateChange((_event,sess)=>{
@@ -2171,7 +2180,7 @@ async function openPdf(url,title,opt){opt=opt||{};
       try{const f=new File([blob],fn,{type:'application/pdf'});if(navigator.canShare&&navigator.canShare({files:[f]})){await navigator.share({files:[f],title:fn});return}}catch(e){if(e&&e.name==='AbortError')return}
       /* Quien no es de la organización de Ricardo no puede usar la descarga de Claude: le damos un link al archivo para abrirlo en el navegador y guardarlo. */
       try{let href=typeof url==='string'&&/^\/_blob\//.test(url)?url:'';
-        if(!href&&ASSETS){dl.disabled=true;dl.textContent='Preparando…';const res=await ASSETS.upload(blob,{type:'application/pdf'});href='/_blob/'+res.id}
+        if(!href&&ASSETS){dl.disabled=true;dl.textContent='Preparando…';const res=await ASSETS.upload(blob,{type:'application/pdf'});href=res.url||assetUrl(res.id)}
         if(!href)throw new Error('noasset');
         const a=document.createElement('a');a.className='pdfv-x pdfv-dl';a.href=href;a.target='_blank';a.rel='noopener';a.setAttribute('download',fn);a.setAttribute('data-raw','1');a.style.textDecoration='none';a.textContent='Abrir para guardar';dl.replaceWith(a);
         toast('Toca “Abrir para guardar”. Se abre en el navegador: ahí usa ⋮ → Descargar, o Compartir → WhatsApp.')}
@@ -2356,7 +2365,9 @@ function setPdfBar(svc){const n=(svc.setlist||[]).length;if(!n)return '';const s
   return `<div class="setpdf"><span class="grow">${sp?`<b style="color:var(--fg)">PDF del culto</b> · ${sp.pages||''} páginas${stale?' · <span class="stale">la lista cambió, vuelve a armarlo</span>':''}`:`${withPdf} de ${n} canciones con PDF adjunto`}${(()=>{const miss=(svc.setlist||[]).filter(r=>r.song&&!(r.pdf&&r.pdf.id));return miss.length?`<span class="miss-l">Falta: ${miss.map(r=>esc(r.song)+(r.key?' ('+esc(r.key)+')':'')).join(', ')}</span>`:''})()}</span>
     ${sp?`<a class="btn sm primary" href="${assetUrl(sp.id)}" data-title="${esc(svc.title)} · todas las canciones">Ver PDF del culto</a>`:''}${ASSETS?`<button class="btn sm" data-sid="${svc.id}" data-act="buildPdf" ${withPdf?'':'disabled'}>${sp?'Volver a armar':'Armar PDF del culto'}</button>`:''}</div>`}
 function assetErr(e){const c=e&&e.code;
-  if(c==='too_large')toast('El archivo pesa más de 20 MB. Guárdalo más liviano e inténtalo de nuevo.');
+  if(c==='too_large'&&DRIVE_CONNECTED)toast('El archivo pesa más de 4 MB. Comprímelo (por ejemplo en ilovepdf.com) e inténtalo de nuevo.');
+  else if(c==='drive_not_connected')toast('Google Drive no está conectado. Pulsa “Conectar Google Drive”.');
+  else if(c==='too_large')toast('El archivo pesa más de 20 MB. Guárdalo más liviano e inténtalo de nuevo.');
   else if(c==='unsupported_type')toast('Solo se aceptan PDF, JPG o PNG.');
   else if(c==='quota_or_state')toast('Se llenó el espacio de archivos de la app. Quita PDFs viejos.');
   else if(c==='not_granted'||c==='capability_disabled')toast('No tienes permiso para subir archivos aquí.');
