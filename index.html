@@ -1102,7 +1102,7 @@ async function connectDrive(){
   catch(e){toast('No se pudo iniciar Google Drive: '+e.message+' — revisa /api/drive/diagnose')}}
 function driveReturnNotice(){const q=new URLSearchParams(location.search);if(q.get('drive')!=='connected')return;toast('✓ Google Drive conectado. Los archivos se guardarán en la carpeta Arca.');q.delete('drive');history.replaceState(null,'',location.pathname+(q.toString()?'?'+q:'')+location.hash)}
 /* ---------- constants ---------- */
-const COLS=['people','teams','songs','services','events','projects','tasks','recurring','settings','requests','devos','devoviews','devocomments','setlists'];
+const COLS=['people','teams','songs','services','events','projects','tasks','recurring','settings','requests','devos','devoviews','devocomments','setlists','pwresets'];
 const S={}; COLS.forEach(c=>S[c]=[]);
 const ICON={
   inicio:'<path d="M3 10.5 12 3l9 7.5V20a1 1 0 0 1-1 1h-5v-6H9v6H4a1 1 0 0 1-1-1z"/>',
@@ -1274,6 +1274,7 @@ function renderAuth(){
         <button class="btn primary" type="submit">Entrar</button>
         <button class="btn" type="button" id="arcaSignup">Crear cuenta</button>
       </div>
+      <button class="linkb small" type="button" id="arcaForgot" style="justify-self:center">¿Olvidaste tu contraseña?</button>
       <div id="arcaAuthMsg" class="small muted" style="text-align:center"></div>
     </form>
   </section>`;
@@ -1302,6 +1303,13 @@ function renderAuth(){
     if(data.session) return;
     $('#arcaAuthMsg').textContent='Cuenta creada. Revisa tu correo si Supabase pide confirmar la cuenta.';
   };
+  $('#arcaForgot').onclick=async()=>{const email=$('#arcaEmail').value.trim();const msg=$('#arcaAuthMsg');
+    if(!/^\S+@\S+\.\S+$/.test(email)){msg.textContent='Escribe arriba tu correo y vuelve a tocar “¿Olvidaste tu contraseña?”.';$('#arcaEmail').focus();return}
+    const b=$('#arcaForgot');b.disabled=true;msg.textContent='Enviando…';
+    try{const r=await fetch('/api/auth/forgot',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({email})});const j=await r.json().catch(()=>({}));
+      if(!r.ok)throw new Error(j.message||'Error '+r.status);
+      msg.textContent='Listo. Le llegó tu solicitud a Ricardo: te enviará una contraseña temporal por WhatsApp.'}
+    catch(e){b.disabled=false;msg.textContent='No se pudo enviar: '+e.message}};
 }
 
 async function resolveIdentity(){
@@ -1353,7 +1361,7 @@ async function init(){
   // Así el login funciona aunque la página haya arrancado sin sesión.
   SB.auth.onAuthStateChange((_event,sess)=>{
     if(sess){
-      ME_USER=sess.user; CANWRITE=true; mode='live';
+      ME_USER=sess.user; CANWRITE=true; mode='live';maybeForcePw(sess.user);
       subscribeData().then(async()=>{await resolveIdentity();renderLive();render()}).catch(e=>{console.error('Arca / Supabase:',e);toast('Supabase: '+(e?.message||e?.code||'error desconocido'))});
     }else{
       ME_USER=null; mode='auth'; renderLive(); renderAuth();
@@ -1361,7 +1369,7 @@ async function init(){
   });
   const {data:{session}}=await SB.auth.getSession();
   if(!session){mode='auth';renderLive();renderAuth();return}
-  ME_USER=session.user; mode='live'; CANWRITE=true;
+  ME_USER=session.user; mode='live'; CANWRITE=true;maybeForcePw(session.user);
   renderLive(); render();
   try{await subscribeData();await resolveIdentity();renderLive();render();}
   catch(e){console.error('Arca / Supabase:',e);toast('Supabase: '+(e?.message||e?.code||'error desconocido'));console.error('SUPABASE ERROR',e);render()}
@@ -1726,6 +1734,37 @@ function reqPanel(){if(!APPROVERS.includes(ME))return '';const L=pendingReqs(),A
         :`<p class="small" style="margin:4px 0 8px">Aprobada${p?' · perfil de '+esc(p.name):''}. Antes de enviarle el acceso, agrega su correo <b>${esc(r.email||'')}</b> en Arca → <b>Compartir</b> para que pueda confirmar y ver todo.</p>
           <div class="tbtns" style="margin:0">${p?`<button class="tb sm" data-person="${p.id}">Editar perfil y foto</button>`:''}<a class="tb sm ok" href="https://wa.me/${waNum(r)}?text=${encodeURIComponent(accessMsg(r))}" target="_blank" rel="noopener" data-reqsent="${r.id}">Enviar su acceso por WhatsApp</a><button class="tb sm" data-reqsent="${r.id}">Ya se lo envié</button></div>`}</li>`}).join('')}</ul></details>`}
 const accessMsg=r=>`¡Bienvenido(a) a Arca, ${String(r.name||'').split(/\s+/)[0]}! 🎉\n\nYa tienes tu perfil. Para entrar:\n1. Crea tu cuenta en Arca con este correo: ${r.email||'(tu correo)'}\n2. Abre el enlace de Arca e inicia sesión.\n3. Arca te reconocerá automáticamente por tu correo cuando tu perfil esté vinculado.\n\n¡Dios te bendiga!`;
+/* ---------- Contraseñas olvidadas: la solicitud llega a Tú de Ricardo y Andrés ---------- */
+const pendingPw=()=>sortBy(S.pwresets.filter(r=>r.status==='pendiente'),r=>r.at||'');
+const personByEmail=em=>S.people.find(p=>norm(p.email||'')===norm(em||''));
+const pwMsg=(p,email,pw)=>`Hola${p?' '+String(p.name||'').split(/\s+/)[0]:''} 👋\n\nTe restablecí la contraseña de Arca:\n\nCorreo: ${email}\nContraseña temporal: ${pw}\n\nEntra en ${location.origin} y Arca te pedirá que pongas una contraseña nueva.`;
+function pwPanel(){if(!APPROVERS.includes(ME))return '';const L=pendingPw();if(!L.length)return '';
+  return `<details class="tcard tfold" data-fold="pwres" ${foldAttr('pwres')}><summary><h2 class="th2">Contraseñas olvidadas</h2><p class="small"><b class="tsb pend">${L.length} ${L.length===1?'solicitud':'solicitudes'}</b> esperando una contraseña temporal.</p></summary>
+    <ul class="rev">${L.map(r=>{const p=personByEmail(r.email);return `<li><b style="font-size:1.1rem">${esc(p?p.name:'Sin perfil en Personas')}</b>
+      <div class="pinfo" style="padding:8px 0;border:0"><span><span class="lbl">Correo</span>${esc(r.email)}</span>${p&&p.phone?`<span><span class="lbl">Teléfono</span>${esc(p.phone)}</span>`:''}<span><span class="lbl">Pidió</span>${esc(r.at?new Date(r.at).toLocaleString('es',{day:'numeric',month:'short',hour:'numeric',minute:'2-digit'}):'')}</span></div>
+      ${p?'':'<p class="small" style="margin:0 0 8px">Ojo: este correo no está en ninguna persona. Si no lo conoces, descártalo.</p>'}
+      <div class="tbtns" style="margin:4px 0 0"><button class="tb sm ok" data-pwreset="${r.id}">Crear contraseña temporal</button><button class="tb sm warn" data-pwno="${r.id}">Descartar</button></div></li>`}).join('')}</ul></details>`}
+async function pwResolve(id,action){const r=byId('pwresets',id);
+  try{const res=await arcaApi('/api/auth/reset',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({id,action})});const j=await res.json().catch(()=>({}));
+    if(!res.ok)throw new Error(j.message||'Error '+res.status);
+    const i=S.pwresets.findIndex(x=>x.id===id);if(i>=0)S.pwresets[i]={...S.pwresets[i],status:action==='dismiss'?'descartada':'resuelta'};
+    if(action==='dismiss'){toast('Solicitud descartada.');return render()}
+    const p=personByEmail(j.email),wa=waNum(p),msg=pwMsg(p,j.email,j.password);
+    openForm({title:'Contraseña temporal',saveLabel:'Listo',fields:[{type:'html',html:`<div class="info gold"><b>${esc(p?p.name:j.email)}</b><span>${j.created?'No tenía cuenta: se la creé con este correo.':'Su contraseña anterior ya no sirve.'} Envíale esto; al entrar, Arca le pedirá una nueva.</span></div>
+      <p style="font:900 1.6rem/1.2 ui-monospace,monospace;text-align:center;margin:18px 0;user-select:all">${esc(j.password)}</p>
+      <div class="row" style="justify-content:center"><a class="btn primary" href="https://wa.me/${wa}?text=${encodeURIComponent(msg)}" target="_blank" rel="noopener">Enviar por WhatsApp</a><button type="button" class="btn" data-pwcopy="${esc(msg)}">Copiar mensaje</button></div>`}],onSave:()=>{}})}
+  catch(e){toast('No se pudo: '+e.message)}
+  render()}
+function changeMyPassword(forced){openForm({title:forced?'Pon tu contraseña nueva':'Cambiar mi contraseña',saveLabel:'Guardar contraseña',
+  intro:forced?'<div class="info gold"><b>Entraste con una contraseña temporal</b><span>Elige una nueva que solo tú sepas (mínimo 6 caracteres).</span></div>':'',
+  fields:[{id:'pw1',label:'Contraseña nueva',type:'password',required:true},{id:'pw2',label:'Repítela',type:'password',required:true}],
+  onSave:async v=>{if(v.pw1.length<6){toast('La contraseña necesita al menos 6 caracteres.');return setTimeout(()=>changeMyPassword(forced),300)}
+    if(v.pw1!==v.pw2){toast('Las contraseñas no coinciden.');return setTimeout(()=>changeMyPassword(forced),300)}
+    const {error}=await SB.auth.updateUser({password:v.pw1,data:{must_change_password:false}});
+    if(error){toast('No se pudo cambiar: '+error.message);return setTimeout(()=>changeMyPassword(forced),300)}
+    toast('Listo: tu contraseña nueva ya está guardada.')}})}
+let pwAsked=false;
+function maybeForcePw(user){if(pwAsked||!user?.user_metadata?.must_change_password)return;pwAsked=true;setTimeout(()=>changeMyPassword(true),600)}
 async function approveReq(id){const r=byId('requests',id);if(!r)return;
   const ex=S.people.find(p=>(r.email&&norm(p.email)===norm(r.email))||norm(p.name)===norm(r.name));
   let pid=ex&&ex.id;if(!pid){pid=await save('people',{name:String(r.name||'').trim(),phone:r.phone||'',email:r.email||'',birth:/^\d{4}-\d{2}-\d{2}$/.test(r.birth||'')?r.birth:'',titles:[],teamIds:[],status:'activo',notes:[r.ministries?'Ministerio: '+r.ministries:'',r.invitedBy?'Invitado por: '+r.invitedBy:'',r.notes||''].filter(Boolean).join('\n'),photo:''});if(!pid)return}
@@ -1886,9 +1925,9 @@ function vTurno(){
   const mine=sortBy(svcsBetween(TODAY,upto).filter(x=>!x.cancelled&&(x.assignments||[]).some(a=>a.personId===ME)),x=>x.date+(x.time||'')).filter(x=>x.date>TODAY||mins(x.time)+120>=nowM);
   const first=me.name.split(/\s+/)[0];
   const isBd=bdayMD(me)===TODAY.slice(5);
-  const head=(isBd?`<section class="hbd" style="margin-bottom:16px"><div class="hbd-t"><span class="spark"></span><div><h2>¡Feliz cumpleaños, ${esc(first)}!</h2><p>Todo el equipo de Philly celebra tu vida hoy. Que Dios te bendiga.</p></div></div></section>`:'')+`<div class="turno-top"><div class="me-top">${me.photo?`<img class="meph" src="/_blob/${esc(me.photo)}" alt="">`:`<span class="meph bg${colorOf(me.id)}" aria-hidden="true">${esc(initials(me.name))}</span>`}<h1>Hola, ${esc(first)}</h1></div><button class="linkb" data-me="">No soy ${esc(first)}</button></div>`;
+  const head=(isBd?`<section class="hbd" style="margin-bottom:16px"><div class="hbd-t"><span class="spark"></span><div><h2>¡Feliz cumpleaños, ${esc(first)}!</h2><p>Todo el equipo de Philly celebra tu vida hoy. Que Dios te bendiga.</p></div></div></section>`:'')+`<div class="turno-top"><div class="me-top">${me.photo?`<img class="meph" src="${assetUrl(me.photo)}" alt="">`:`<span class="meph bg${colorOf(me.id)}" aria-hidden="true">${esc(initials(me.name))}</span>`}<h1>Hola, ${esc(first)}</h1></div><button class="linkb" data-me="">No soy ${esc(first)}</button></div>`;
   const mgr=MANAGERS.includes(me.id)?`<div class="tmgr"><button class="btn" data-act="newTask">Nueva tarea</button><button class="btn primary" data-act="newService">Nuevo servicio</button></div>`:'';
-  if(!mine.length)return `<div class="turno">${head}${mgr}<section class="tcard"><p class="big" style="margin:0">No tienes turnos programados por ahora.</p><p class="small">Cuando te programen, aparecerá aquí.</p></section>${devoPanel()}${myTasksPanel()}${reviewPanel()}${keysPanel()}${reqPanel()}${SUPERVISORS.includes(ME)?superPanel():''}${helpLine()}</div>`;
+  if(!mine.length)return `<div class="turno">${head}${mgr}<section class="tcard"><p class="big" style="margin:0">No tienes turnos programados por ahora.</p><p class="small">Cuando te programen, aparecerá aquí.</p></section>${devoPanel()}${myTasksPanel()}${reviewPanel()}${keysPanel()}${reqPanel()}${pwPanel()}${SUPERVISORS.includes(ME)?superPanel():''}${helpLine()}</div>`;
   let si=mine.findIndex(y=>y.id===ui.turnoSel);if(si<0)si=0;
   const x=mine[si],a=(x.assignments||[]).find(a=>a.personId===ME),lead=(x.assignments||[]).some(v=>v.personId===ME&&isLead(v)),myA=(x.assignments||[]).filter(v=>v.personId===ME),out=myA.every(v=>v.status==='declinado'),pend=!out&&myA.some(v=>v.status!=='confirmado'&&v.status!=='declinado');
   const others=(x.assignments||[]).filter(v=>v.personId&&v.personId!==ME&&v.status!=='declinado').sort((p,q)=>isLead(q)-isLead(p));
@@ -1914,8 +1953,8 @@ function vTurno(){
   const next=mine.filter((y,i)=>i!==si).slice(0,6);
   const sup=SUPERVISORS.includes(ME)?superPanel():'';
   const later=next.length?`<details class="tcard tfold" data-fold="fechas" ${foldAttr('fechas')}><summary><h2 class="th2">Tus próximas fechas</h2><p class="small">${next.length} ${next.length===1?'fecha':'fechas'}</p></summary><ul class="tnext">${next.map(y=>{const b=(y.assignments||[]).find(a=>a.personId===ME);return `<li><button class="linkb tnext-open" data-tsel="${y.id}"><b>${esc(LDOW[parse(y.date).getDay()].replace(/^./,c=>c.toUpperCase()))} ${parse(y.date).getDate()} de ${esc(parse(y.date).toLocaleDateString('es',{month:'long'}))}</b> · ver</button><span>${esc(ampm(y.time))} · ${esc(y.title)}${isLead(b)?' · <strong>diriges</strong>':''}${b.status==='declinado'?' · no vas':b.status!=='confirmado'?' · <em class="pendq">sin confirmar</em>':''}</span>${b.status!=='confirmado'&&b.status!=='declinado'?`<span class="tbtns" style="margin:6px 0 0"><button class="tb sm ok" data-can="${y.id}">Confirmo</button><button class="tb sm warn" data-cant="${y.id}">No puedo</button></span>`:''}</li>`}).join('')}</ul></details>`:'';
-  return `<div class="turno">${head}${CANWRITE===false&&mode==='live'?`<div class="info warn" role="alert" style="margin-bottom:14px"><b>Estás viendo Arca como invitado.</b> Puedes ver todo, pero no confirmar. Suele pasar al abrir el link desde WhatsApp o Gmail: ábrelo en Safari o Chrome con tu sesión de Arca iniciada (o desde la app de Arca), con el correo de tu cuenta de Arca.</div>`:''}${mgr}${svcFold}${devoPanel()}${myTasksPanel()}${reviewPanel()}${keysPanel()}${reqPanel()}${sup}${later}${helpLine()}</div>`}
-function helpLine(){return `<p class="small center"><button class="linkb" data-tourstart>¿Cómo se usa Arca?</button> · <button class="linkb" data-go="inicio">Ir a la app completa</button></p>`}
+  return `<div class="turno">${head}${CANWRITE===false&&mode==='live'?`<div class="info warn" role="alert" style="margin-bottom:14px"><b>Estás viendo Arca como invitado.</b> Puedes ver todo, pero no confirmar. Suele pasar al abrir el link desde WhatsApp o Gmail: ábrelo en Safari o Chrome con tu sesión de Arca iniciada (o desde la app de Arca), con el correo de tu cuenta de Arca.</div>`:''}${mgr}${svcFold}${devoPanel()}${myTasksPanel()}${reviewPanel()}${keysPanel()}${reqPanel()}${pwPanel()}${sup}${later}${helpLine()}</div>`}
+function helpLine(){return `<p class="small center"><button class="linkb" data-tourstart>¿Cómo se usa Arca?</button> · <button class="linkb" data-go="inicio">Ir a la app completa</button> · <button class="linkb" data-mypw>Cambiar mi contraseña</button></p>`}
 async function setMyStatus(sid,st){const svc=svcLookup(sid);if(!svc)return;
   const list=(svc.assignments||[]).map(a=>a.personId===ME?{...a,status:st}:a);
   const ok=await save('services',{...svc,assignments:list});ui.saveFail=ok?'':sid;if(ok)toast(st==='declinado'?'Listo. Quedó marcado que no puedes ir.':'Listo. Quedaste confirmado.');render()}
@@ -2179,7 +2218,7 @@ async function openPdf(url,title,opt){opt=opt||{};
       if(DL){try{await DL.save({filename:fn,data:blob});toast('Listo: PDF descargado.');return}catch(e){if(e&&e.code==='declined')return}}
       try{const f=new File([blob],fn,{type:'application/pdf'});if(navigator.canShare&&navigator.canShare({files:[f]})){await navigator.share({files:[f],title:fn});return}}catch(e){if(e&&e.name==='AbortError')return}
       /* Quien no es de la organización de Ricardo no puede usar la descarga de Claude: le damos un link al archivo para abrirlo en el navegador y guardarlo. */
-      try{let href=typeof url==='string'&&/^\/_blob\//.test(url)?url:'';
+      try{let href=typeof url==='string'&&/^\/(_blob\/|api\/drive\/file)/.test(url)?url:'';
         if(!href&&ASSETS){dl.disabled=true;dl.textContent='Preparando…';const res=await ASSETS.upload(blob,{type:'application/pdf'});href=res.url||assetUrl(res.id)}
         if(!href)throw new Error('noasset');
         const a=document.createElement('a');a.className='pdfv-x pdfv-dl';a.href=href;a.target='_blank';a.rel='noopener';a.setAttribute('download',fn);a.setAttribute('data-raw','1');a.style.textDecoration='none';a.textContent='Abrir para guardar';dl.replaceWith(a);
@@ -2191,7 +2230,7 @@ async function openPdf(url,title,opt){opt=opt||{};
       const c=document.createElement('canvas');c.width=v.width;c.height=v.height;c.style.width=Math.round(v.width/dpr)+'px';c.style.height=Math.round(v.height/dpr)+'px';c.setAttribute('aria-label','Página '+i);
       body.appendChild(c);await pg.render({canvasContext:c.getContext('2d'),viewport:v}).promise}
   }catch(e){if(pdfView!==tok)return;cnt.textContent='';body.innerHTML=`<div class="empty" style="color:#F2E8D2"><b style="color:#F2E8D2">No se pudo abrir el PDF</b>Revisa tu conexión e inténtalo de nuevo.</div>`}}
-document.addEventListener('click',e=>{const a=e.target.closest&&e.target.closest('a[href^="/_blob/"]');if(!a||a.hasAttribute('data-raw'))return;e.preventDefault();e.stopPropagation();
+document.addEventListener('click',e=>{const a=e.target.closest&&e.target.closest('a[href^="/_blob/"],a[href^="/api/drive/file"]');if(!a||a.hasAttribute('data-raw'))return;e.preventDefault();e.stopPropagation();
   const t=a.getAttribute('data-title')||a.getAttribute('title')||a.textContent.trim();openPdf(a.getAttribute('href'),t)},true);
 document.addEventListener('keydown',e=>{if(e.key==='Escape'&&pdfView){e.stopPropagation();closePdf()}},true);
 function noConn(){return `<section class="panel noconn" role="alert">
@@ -2570,7 +2609,7 @@ function openTranspose(o){tp={mode:'save',step:0,lines:null,busy:false,edit:fals
   document.body.style.overflow='hidden';if(tp.mode==='capo'&&tp.src){tp.step=1;tpLoad()}else tpDraw()}
 function closeTranspose(){const r=document.getElementById('tpRoot');if(r)r.innerHTML='';tp=null;if(!document.getElementById('wizRoot')||!document.getElementById('wizRoot').innerHTML)document.body.style.overflow=''}
 async function tpLoad(){if(!tp)return;tp.busy=true;tpDraw();
-  try{const arr=await tpRead(tp.file||('/_blob/'+tp.src.pdf.id));
+  try{const arr=await tpRead(tp.file||assetUrl(tp.src.pdf.id));
     if(!tp)return;if(!arr.length||!arr.some(tpIsChordLine)){tp.busy=false;tp.err=arr.length?'No encontré acordes en este PDF. Búscala abajo en LaCuerda o Cifra Club y pega los acordes, o sube otro PDF.':'Este PDF no tiene texto que se pueda leer.';tp.step=0;return tpDraw()}
     tp.lines=tpClassify(arr);tp.detected=tpDetect(tp.lines);if(!tp.from)tp.from=tp.detected;tp.err='';if(tp.step===0)tp.step=1}
   catch(e){if(!tp)return;tp.err='No se pudo leer el PDF. Revisa tu conexión e inténtalo de nuevo.';tp.step=0}
@@ -2850,7 +2889,7 @@ function vAlabanzas(){
   const row=e=>`<li class="lsong">
     <div class="lmain">${e.key?`<span class="bigkey sm" aria-label="Nota ${esc(e.key)}">${esc(e.key)}</span>`:'<span class="bigkey sm none" title="Tono pendiente" aria-label="Tono pendiente">?</span>'}
       <span class="lt"><b>${esc(e.title)}</b>${e.artist?`<small>${esc(e.artist)}</small>`:''}<small class="lmeta">${e.times?`Cantada ${e.times} ${e.times===1?'vez':'veces'} · última el ${esc(fDate(e.last,{day:'numeric',month:'short'}))}`:'Aún no se ha cantado'}${e.next?` · <b class="lnext">próxima: ${esc(fDate(e.next,{day:'numeric',month:'short'}))}</b>`:''}</small></span></div>
-    <div class="lbtns">${(e.vers||[]).length>1?`<div class="lvers">${e.vers.map(v=>`<div class="lver"><b>${esc(verTitle(v))}</b>${v.url?`<a class="tb sm ${isAudio(v.url)?'aud':''}" href="${esc(v.url)}" target="_blank" rel="noopener" aria-label="Escuchar ${esc(e.title)} · ${esc(verTitle(v))}">▶</a>`:''}${v.pdfs.map(x=>`<a class="tb sm pdf lk" href="${assetUrl(x.pdf.id)}" data-title="${esc(e.title)} · ${esc(verTitle(v))} · ${esc(x.key||'')}" aria-label="Acordes de ${esc(e.title)}, ${esc(verTitle(v))}, en ${esc(x.key||'tono sin marcar')}">${esc(x.key||'?')}</a>`).join('')}</div>`).join('')}</div>`:isUrl(e.url)?`<a class="tb sm ${isAudio(e.url)?'aud':''}" href="${esc(e.url)}" target="_blank" rel="noopener" aria-label="Escuchar ${esc(e.title)}">Escuchar${(e.vers||[])[0]&&e.vers[0].label?' · '+esc(e.vers[0].label):''}</a>`:''}${(e.vers||[]).length>1?'':(e.pdfs||[]).length?(e.pdfs.length===1?`<a class="tb sm pdf" href="/_blob/${esc(e.pdfs[0].pdf.id)}" data-title="${esc(e.title)}${e.pdfs[0].key?' · '+esc(e.pdfs[0].key):''}" aria-label="Ver acordes de ${esc(e.title)}">Acordes${e.pdfs[0].key&&e.pdfs[0].key!==e.key?' '+esc(e.pdfs[0].key):''}</a>`:`<span class="lkeys" role="group" aria-label="Acordes por tono"><span class="lk-l">Acordes</span>${e.pdfs.map(x=>`<a class="tb sm pdf lk" href="${assetUrl(x.pdf.id)}" data-title="${esc(e.title)} · ${esc(x.key||'')}" aria-label="Acordes de ${esc(e.title)} en ${esc(x.key||'tono sin marcar')}">${esc(x.key||'?')}</a>`).join('')}</span>`):isUrl(e.drive)?`<a class="tb sm pdf" href="${esc(e.drive)}" target="_blank" rel="noopener">Acordes</a>`:isUrl(e.cifra)?`<a class="tb sm" href="${esc(e.cifra)}" target="_blank" rel="noopener">${chordSite(e.cifra)}</a>`:''}${e.songId?`<button class="icon-btn" data-song="${e.songId}" aria-label="Editar ${esc(e.title)}" title="Editar">✎</button>`:''}</div></li>`;
+    <div class="lbtns">${(e.vers||[]).length>1?`<div class="lvers">${e.vers.map(v=>`<div class="lver"><b>${esc(verTitle(v))}</b>${v.url?`<a class="tb sm ${isAudio(v.url)?'aud':''}" href="${esc(v.url)}" target="_blank" rel="noopener" aria-label="Escuchar ${esc(e.title)} · ${esc(verTitle(v))}">▶</a>`:''}${v.pdfs.map(x=>`<a class="tb sm pdf lk" href="${assetUrl(x.pdf.id)}" data-title="${esc(e.title)} · ${esc(verTitle(v))} · ${esc(x.key||'')}" aria-label="Acordes de ${esc(e.title)}, ${esc(verTitle(v))}, en ${esc(x.key||'tono sin marcar')}">${esc(x.key||'?')}</a>`).join('')}</div>`).join('')}</div>`:isUrl(e.url)?`<a class="tb sm ${isAudio(e.url)?'aud':''}" href="${esc(e.url)}" target="_blank" rel="noopener" aria-label="Escuchar ${esc(e.title)}">Escuchar${(e.vers||[])[0]&&e.vers[0].label?' · '+esc(e.vers[0].label):''}</a>`:''}${(e.vers||[]).length>1?'':(e.pdfs||[]).length?(e.pdfs.length===1?`<a class="tb sm pdf" href="${assetUrl(e.pdfs[0].pdf.id)}" data-title="${esc(e.title)}${e.pdfs[0].key?' · '+esc(e.pdfs[0].key):''}" aria-label="Ver acordes de ${esc(e.title)}">Acordes${e.pdfs[0].key&&e.pdfs[0].key!==e.key?' '+esc(e.pdfs[0].key):''}</a>`:`<span class="lkeys" role="group" aria-label="Acordes por tono"><span class="lk-l">Acordes</span>${e.pdfs.map(x=>`<a class="tb sm pdf lk" href="${assetUrl(x.pdf.id)}" data-title="${esc(e.title)} · ${esc(x.key||'')}" aria-label="Acordes de ${esc(e.title)} en ${esc(x.key||'tono sin marcar')}">${esc(x.key||'?')}</a>`).join('')}</span>`):isUrl(e.drive)?`<a class="tb sm pdf" href="${esc(e.drive)}" target="_blank" rel="noopener">Acordes</a>`:isUrl(e.cifra)?`<a class="tb sm" href="${esc(e.cifra)}" target="_blank" rel="noopener">${chordSite(e.cifra)}</a>`:''}${e.songId?`<button class="icon-btn" data-song="${e.songId}" aria-label="Editar ${esc(e.title)}" title="Editar">✎</button>`:''}</div></li>`;
   let body='';
   if(!list.length)body=`<section class="panel empty">${q?`Ninguna alabanza coincide con “${esc(ui.libQ)}”.`:'<b>La biblioteca está vacía</b>Las canciones aparecen aquí cuando se agregan a un culto.'}</section>`;
   else if(sort==='az'){let L='';const parts=[];for(const e of list){const l=norm(e.title).charAt(0).toUpperCase().replace(/[^A-Z0-9]/,'#');if(l!==L){L=l;parts.push(`${parts.length?'</ul>':''}<h2 class="lletter">${esc(l)}</h2><ul class="llist">`)}parts.push(row(e))}body=parts.join('')+'</ul>'}
@@ -3151,6 +3190,10 @@ document.addEventListener('click',async e=>{
   if(e.target.closest&&e.target.closest('[data-tourhintx]')){try{localStorage.setItem('arca.tourHint','1')}catch(_){}return render()}
   const ssh=e.target.closest&&e.target.closest('[data-socshare]');if(ssh)return socShare(ssh.dataset.socshare);
   const rqo=e.target.closest&&e.target.closest('[data-reqok]');if(rqo)return approveReq(rqo.dataset.reqok);
+  const pwr=e.target.closest&&e.target.closest('[data-pwreset]');if(pwr){pwr.disabled=true;pwr.textContent='Creando…';return pwResolve(pwr.dataset.pwreset,'reset')}
+  const pwn=e.target.closest&&e.target.closest('[data-pwno]');if(pwn){if(!pwn.dataset.arm){pwn.dataset.arm=1;pwn.textContent='¿Seguro? Toca otra vez';return}return pwResolve(pwn.dataset.pwno,'dismiss')}
+  const pwc=e.target.closest&&e.target.closest('[data-pwcopy]');if(pwc){try{await navigator.clipboard.writeText(pwc.dataset.pwcopy);toast('Mensaje copiado.')}catch(x){toast('No se pudo copiar.')}return}
+  if(e.target.closest&&e.target.closest('[data-mypw]'))return changeMyPassword(false);
   const rqn=e.target.closest&&e.target.closest('[data-reqno]');if(rqn){if(!rqn.dataset.arm){rqn.dataset.arm=1;rqn.textContent='¿Seguro? Toca otra vez';return}const r=byId('requests',rqn.dataset.reqno);if(r&&await save('requests',{...r,status:'descartada',reviewedBy:ME}))toast('Solicitud descartada.');return render()}
   const rqs=e.target.closest&&e.target.closest('[data-reqsent]');if(rqs){const r=byId('requests',rqs.dataset.reqsent);if(r)setTimeout(async()=>{if(await save('requests',{...r,accessSent:true,accessSentAt:new Date().toISOString()}))toast('Listo: '+(r.name||'')+' ya tiene su acceso.');render()},rqs.tagName==='A'?800:0);if(rqs.tagName!=='A')return;return}
   if(e.target.closest&&e.target.closest('[data-invset]'))return setInviteUrl();
