@@ -1,5 +1,4 @@
 <!doctype html><html><head><meta charset=utf8><meta name=viewport content="width=device-width,initial-scale=1,viewport-fit=cover"><style>:root{color-scheme:light;box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}html{scroll-padding-top:env(safe-area-inset-top,0px)}body{margin:0;padding:0;font:14px -apple-system,BlinkMacSystemFont,sans-serif;background:#faf9f5;color:#141413}img{max-width:100%}[hidden]:not([hidden=until-found i]){display:none!important}</style><script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-</head><body class="locked">
 <title>Arca</title>
 <link rel="icon" type="image/png" href="/img/icon-192.png">
 <link rel="apple-touch-icon" href="/img/apple-touch-icon.png">
@@ -12,6 +11,7 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Archivo:ital,wdth,wght@0,62..125,400..900;1,100,500&display=swap">
+</head><body class="locked">
 <style>
 /* Layout: ink rail + quiet canvas. Gold marks only "now" (today, active, next). Every edit happens in one sheet. */
 :root{
@@ -1376,20 +1376,33 @@ async function subscribeData(){
   if(error)throw error;
   COLS.forEach(c=>S[c]=[]);
   for(const r of (data||[]))if(COLS.includes(r.collection))S[r.collection].push({id:r.id,...(r.data||{})});
-  // Solo una suscripción en toda la app. Esto evita el choque que veíamos al iniciar sesión.
-  if(LIVE_CHANNEL){try{await SB.removeChannel(LIVE_CHANNEL)}catch(_){}}
-  LIVE_CHANNEL=SB.channel('arca-live-'+Date.now())
+  LAST_SYNC=Date.now();
+  // Solo una suscripción en toda la app: la nueva reemplaza a la anterior y los avisos del canal viejo se ignoran.
+  const old=LIVE_CHANNEL;
+  const ch=SB.channel('arca-live-'+Date.now());LIVE_CHANNEL=ch;
+  if(old){try{SB.removeChannel(old)}catch(_){}}
+  ch
     .on('postgres_changes',{event:'*',schema:'public',table:'arca_records'},payload=>{
       const r=payload.new||payload.old;if(!r||!COLS.includes(r.collection))return;
       if(payload.eventType==='DELETE')S[r.collection]=S[r.collection].filter(x=>x.id!==r.id);
       else {const rec={id:r.id,...(r.data||{})};const i=S[r.collection].findIndex(x=>x.id===r.id);if(i>=0)S[r.collection][i]=rec;else S[r.collection].push(rec)}
       render();
     })
-    .subscribe((status)=>{
-      if(status==='SUBSCRIBED'){renderLive();return}
-      if(status==='CHANNEL_ERROR') toast('Arca cargó Supabase, pero la actualización en vivo tuvo un problema.');
+    .subscribe((status,err)=>{
+      if(ch!==LIVE_CHANNEL)return;
+      if(status==='SUBSCRIBED'){LIVE_FAILS=0;renderLive();return}
+      if(status==='CHANNEL_ERROR'||status==='TIMED_OUT'||status==='CLOSED'){console.warn('Arca en vivo:',status,err||'');liveRetry()}
     });
 }
+/* Conexión en vivo: una sola carga a la vez, reconexión automática y resincronizar al volver a la app. */
+let SYNCING=null,LAST_SYNC=0,LIVE_FAILS=0,LIVE_TIMER=null;
+function syncData(){if(!SYNCING)SYNCING=subscribeData().finally(()=>{SYNCING=null});return SYNCING}
+function liveRetry(){if(mode!=='live'||!ME_USER||LIVE_TIMER)return;const wait=Math.min(30000,2000*2**LIVE_FAILS);LIVE_FAILS++;
+  if(LIVE_FAILS===4)toast('Sin conexión en vivo. Arca sigue intentando reconectar…');
+  LIVE_TIMER=setTimeout(()=>{LIVE_TIMER=null;if(mode!=='live'||!ME_USER)return;syncData().then(()=>{resolveIdentity();renderLive();render()}).catch(()=>liveRetry())},wait)}
+function liveResume(){if(mode!=='live'||!ME_USER||Date.now()-LAST_SYNC<20000)return;LIVE_FAILS=0;syncData().then(()=>{resolveIdentity();renderLive();render()}).catch(()=>liveRetry())}
+document.addEventListener('visibilitychange',()=>{if(document.visibilityState==='visible')liveResume()});
+window.addEventListener('online',()=>{LAST_SYNC=0;liveResume()});
 
 if('serviceWorker' in navigator)window.addEventListener('load',()=>navigator.serviceWorker.register('/sw.js').catch(()=>{}));
 document.addEventListener('click',e=>{const b=e.target.closest&&e.target.closest('[data-pwshow]');if(!b)return;e.preventDefault();
@@ -1404,9 +1417,10 @@ async function init(){
   // Escuchamos cambios de sesión ANTES de comprobar la sesión actual.
   // Así el login funciona aunque la página haya arrancado sin sesión.
   SB.auth.onAuthStateChange((_event,sess)=>{
+    if(sess&&ME_USER&&mode==='live'&&_event!=='SIGNED_IN'){ME_USER=sess.user;try{SB.realtime.setAuth(sess.access_token)}catch(_){}return}
     if(sess){
       ME_USER=sess.user; CANWRITE=true; mode='live';unlockArca();maybeForcePw(sess.user);
-      subscribeData().then(async()=>{await resolveIdentity();renderLive();render()}).catch(e=>{console.error('Arca / Supabase:',e);toast('Supabase: '+(e?.message||e?.code||'error desconocido'))});
+      syncData().then(async()=>{await resolveIdentity();renderLive();render()}).catch(e=>{console.error('Arca / Supabase:',e);toast('Supabase: '+(e?.message||e?.code||'error desconocido'))});
     }else{
       ME_USER=null; mode='auth'; renderLive(); renderAuth();
     }
@@ -1415,7 +1429,7 @@ async function init(){
   if(!session){mode='auth';renderLive();renderAuth();return}
   ME_USER=session.user; mode='live'; CANWRITE=true;unlockArca();maybeForcePw(session.user);
   renderLive(); render();
-  try{await subscribeData();await resolveIdentity();renderLive();render();}
+  try{await syncData();await resolveIdentity();renderLive();render();}
   catch(e){console.error('Arca / Supabase:',e);toast('Supabase: '+(e?.message||e?.code||'error desconocido'));console.error('SUPABASE ERROR',e);render()}
   setTimeout(()=>{try{maybeNews()}catch(_){}},4000);
 }
