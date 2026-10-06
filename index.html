@@ -3142,7 +3142,13 @@ function openPalette(){
 function closePalette(){document.getElementById('palRoot')?.remove();pal=null}
 
 /* ---------- render ---------- */
-function render(){if(DRAG)return;
+/* Filas de cultos que aún apuntan a un PDF de antes de Google Drive (/_blob/): si la canción ya tiene
+   su PDF en Drive (mismo tono si se puede), la fila usa ese. Solo en memoria; se guarda la próxima vez que se edite el culto. */
+function healPdfs(){for(const sv of S.services)for(const r of (sv.setlist||[])){if(!r.pdf||!r.pdf.id||isDriveAsset(r.pdf.id))continue;
+  const so=S.songs.find(x=>norm(x.title)===norm(r.song));if(!so)continue;const v=rowVer(r,so),k=normKey(r.pdfKey||r.key);
+  const drv=L=>(L||[]).filter(x=>x.pdf&&isDriveAsset(x.pdf.id));const mine=drv(v&&v.pdfs),all=drv(songPdfs(so));
+  const c=mine.find(x=>x.key===k)||all.find(x=>x.key===k)||mine[0]||all[0];if(c){r.pdf=c.pdf;r.pdfKey=c.key||r.pdfKey}}}
+function render(){if(DRAG)return;try{healPdfs()}catch(e){console.warn('healPdfs',e)}
   const a=document.activeElement,fid=a&&a.id&&$('#main').contains(a)?a.id:null,sel=fid&&a.selectionStart!=null?[a.selectionStart,a.selectionEnd]:null,val=fid&&a.tagName==='INPUT'&&!a.dataset.tkadd?a.value:null;
   renderNav();
   document.body.classList.toggle('simple',ui.route==='turno');
