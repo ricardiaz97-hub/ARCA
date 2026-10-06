@@ -2889,6 +2889,59 @@ function libSongs(){
     e.uses.push(sv.date);const kk=normKey(r.key);if(kk)e.keys[kk]=(e.keys[kk]||0)+1}}
   return [...map.values()].map(e=>{const past=e.uses.filter(d=>d<=TODAY).sort();const fut=e.uses.filter(d=>d>TODAY).sort();
     const topKey=Object.entries(e.keys).sort((a,b)=>b[1]-a[1])[0];return {...e,pdfs:(e.pdfs||[]).sort((x,y)=>NOTAS.indexOf(x.key)-NOTAS.indexOf(y.key)),times:past.length,last:past[past.length-1]||'',next:fut[0]||'',key:(topKey&&topKey[0])||e.key}})}
+/* ---------- PDFs de antes de Google Drive: lista de los que faltan + subida en lote ---------- */
+// Canciones con PDFs que solo existen en /_blob/ (sin un PDF de Drive en ese mismo tono y versión).
+function lostPdfs(){const out=[];for(const so of S.songs){if(!so.title)continue;
+  for(const v of songVersions(so)){const drv=new Set(v.pdfs.filter(x=>isDriveAsset(x.pdf.id)).map(x=>x.key));
+    for(const x of v.pdfs)if(!isDriveAsset(x.pdf.id)&&!drv.has(x.key))out.push({so,verId:v.id,verLabel:v.label,key:x.key})}}
+  return out.sort((a,b)=>a.so.title.localeCompare(b.so.title,'es'))}
+function lostPanel(){if(!ASSETS)return '';const L=lostPdfs();if(!L.length)return '';const n=new Set(L.map(x=>x.so.id)).size;
+  return `<details class="info warn" style="margin:0 0 14px"><summary style="cursor:pointer"><b>${n} ${n===1?'canción tiene':'canciones tienen'} PDFs de antes de Google Drive</b> · ya no se pueden abrir; hay que volver a subirlos.</summary>
+    <div class="row" style="margin:10px 0"><button class="btn primary sm" data-bulkpdf>Subir varios PDFs a la vez</button></div>
+    <ul class="small" style="margin:0;padding-left:18px;columns:2;column-gap:24px">${L.map(x=>`<li>${esc(x.so.title)}${x.verLabel?' · '+esc(x.verLabel):''} — <b>${esc(x.key||'sin tono')}</b></li>`).join('')}</ul></details>`}
+// Adivina canción y tono a partir del nombre del archivo: "Eres Todo Poderoso - D.pdf", "eres_todo_poderoso (Tono D).pdf"…
+function bulkGuess(name){const base=String(name).replace(/\.[a-z0-9]+$/i,'').replace(/[_]+/g,' ');
+  let key='';const toks=base.split(/[\s\-–—()[\],.]+/).filter(Boolean);for(let i=toks.length-1;i>=0;i--){if(/^[A-G](#|b|♯|♭)?(m|min)?$/.test(toks[i])){key=normKey(toks[i]);break}}
+  const nb=' '+norm(base).replace(/[^a-z0-9ñ ]+/g,' ').replace(/\s+/g,' ')+' ';let best=null,bs=0;
+  for(const so of S.songs){if(!so.title)continue;const t=norm(so.title).replace(/[^a-z0-9ñ ]+/g,' ').replace(/\s+/g,' ').trim();if(!t)continue;
+    let sc=0;if(nb.includes(' '+t+' '))sc=100+t.length;else{const w=t.split(' ').filter(x=>x.length>2);if(w.length){const hit=w.filter(x=>nb.includes(' '+x+' ')).length;sc=hit/w.length>=.75?hit*10:0}}
+    if(sc>bs){bs=sc;best=so}}
+  if(best&&!key){const lost=lostPdfs().filter(x=>x.so.id===best.id);key=lost.length===1?lost[0].key:(lost[0]&&lost[0].key)||normKey(best.key)}
+  return {songId:best?best.id:'',key}}
+let bulk=null;
+function openBulkPdf(){bulk={items:[],busy:false};let r=document.getElementById('bulkRoot');
+  if(!r){r=document.createElement('div');r.id='bulkRoot';document.body.appendChild(r);
+    r.addEventListener('click',e=>{const b=e.target.closest('[data-bulkx],[data-bulkgo],[data-bulkrm]');if(!b||!bulk)return;
+      if('bulkx' in b.dataset){if(bulk.busy)return;r.innerHTML='';bulk=null;document.body.style.overflow='';return render()}
+      if('bulkrm' in b.dataset){bulk.items.splice(Number(b.dataset.bulkrm),1);return bulkDraw()}
+      if('bulkgo' in b.dataset)return bulkRun()});
+    r.addEventListener('change',e=>{if(!bulk)return;const t=e.target;
+      if(t.id==='bulk-files'){for(const f of t.files){const g=bulkGuess(f.name);bulk.items.push({file:f,...g,st:''})}return bulkDraw()}
+      const i=Number(t.dataset.i);if(!bulk.items[i])return;if(t.dataset.f==='song'){bulk.items[i].songId=t.value}else if(t.dataset.f==='key')bulk.items[i].key=t.value})}
+  document.body.style.overflow='hidden';bulkDraw()}
+function bulkDraw(){const r=document.getElementById('bulkRoot');if(!r||!bulk)return;const songs=sortBy(S.songs.filter(x=>x.title),x=>norm(x.title));
+  const ok=bulk.items.filter(x=>x.songId&&x.st!=='ok').length;
+  r.innerHTML=`<div class="wz-scrim" data-bulkx></div><div class="wz" role="dialog" aria-modal="true" aria-labelledby="bulk-t" style="width:min(760px,calc(100vw - 24px))">
+    <div class="wz-h"><b id="bulk-t">Subir PDFs en lote</b><button class="wz-x" data-bulkx aria-label="Cerrar">✕</button></div>
+    <div class="wz-b"><p class="small" style="margin-top:0">Elige todos los PDFs (o fotos) de acordes de una vez. Arca los empareja con cada canción por el <b>nombre del archivo</b> (por ejemplo <i>Eres Todo Poderoso - D.pdf</i>). Revisa la canción y el tono antes de subir.</p>
+      <label class="wz-up"><input type="file" id="bulk-files" accept="application/pdf,image/png,image/jpeg" multiple hidden>+ Elegir archivos</label>
+      ${bulk.items.length?`<table style="width:100%;border-collapse:collapse;margin-top:12px;font-size:.9rem"><thead><tr style="text-align:left"><th style="padding:4px">Archivo</th><th style="padding:4px">Canción</th><th style="padding:4px">Tono</th><th></th></tr></thead><tbody>
+        ${bulk.items.map((x,i)=>`<tr style="border-top:1px solid var(--line)"><td style="padding:4px;word-break:break-word">${esc(x.file.name)}${x.st==='ok'?' <b style="color:var(--ok,green)">✓</b>':x.st==='err'?` <b style="color:#b00">✕ ${esc(x.err||'')}</b>`:x.st==='up'?' <i>subiendo…</i>':''}</td>
+          <td style="padding:4px"><select data-i="${i}" data-f="song" ${bulk.busy||x.st==='ok'?'disabled':''} style="max-width:260px"><option value="">— No subir —</option>${songs.map(so=>`<option value="${so.id}" ${so.id===x.songId?'selected':''}>${esc(so.title)}</option>`).join('')}</select></td>
+          <td style="padding:4px"><select data-i="${i}" data-f="key" ${bulk.busy||x.st==='ok'?'disabled':''}><option value="">?</option>${NOTAS.map(n=>`<option ${n===x.key?'selected':''}>${n}</option>`).join('')}</select></td>
+          <td style="padding:4px">${bulk.busy||x.st==='ok'?'':`<button class="linkb" data-bulkrm="${i}" aria-label="Quitar">✕</button>`}</td></tr>`).join('')}</tbody></table>`:''}</div>
+    <div class="wz-f"><button class="btn ghost" data-bulkx ${bulk.busy?'disabled':''}>Cerrar</button><button class="btn primary" data-bulkgo ${ok&&!bulk.busy?'':'disabled'}>${bulk.busy?'Subiendo…':`Subir ${ok} archivo${ok===1?'':'s'}`}</button></div></div>`}
+async function bulkRun(){if(!bulk||bulk.busy)return;bulk.busy=true;bulkDraw();let n=0;
+  for(const x of bulk.items){if(!x.songId||x.st==='ok')continue;x.st='up';bulkDraw();
+    try{const so=byId('songs',x.songId);if(!so)throw new Error('canción no encontrada');
+      const type=x.file.type||(/\.pdf$/i.test(x.file.name)?'application/pdf':'image/jpeg');
+      const res=await ASSETS.upload(x.file,{type});const pdf={id:res.id,type,name:x.file.name};
+      const lost=lostPdfs().find(l=>l.so.id===so.id&&l.key===(x.key||''));
+      if(!await save('songs',withSongPdf(byId('songs',so.id),x.key,pdf,lost&&lost.verId)))throw new Error('no se guardó');
+      x.st='ok';n++}
+    catch(e){x.st='err';x.err=e.code==='too_large'?'pesa más de 4 MB':(e.message||'error')}
+    bulkDraw()}
+  bulk.busy=false;bulkDraw();toast(`Listo: ${n} PDF(s) subidos a Google Drive.`)}
 function vAlabanzas(){
   const q=norm(ui.libQ||'');const sort=ui.libSort||'az';
   let list=libSongs().filter(e=>!q||norm(e.title+' '+e.artist).includes(q));
@@ -2902,7 +2955,7 @@ function vAlabanzas(){
   else if(sort==='az'){let L='';const parts=[];for(const e of list){const l=norm(e.title).charAt(0).toUpperCase().replace(/[^A-Z0-9]/,'#');if(l!==L){L=l;parts.push(`${parts.length?'</ul>':''}<h2 class="lletter">${esc(l)}</h2><ul class="llist">`)}parts.push(row(e))}body=parts.join('')+'</ul>'}
   else body=`<ul class="llist">${list.map(row).join('')}</ul>`;
   return `<div class="head"><div><h1>Alabanzas</h1><p>La biblioteca de Philly · ${libSongs().length} canciones.</p></div><button class="btn primary" data-act="newSong">Agregar canción</button></div>
-    <div class="lbar"><input type="search" id="libSearch" placeholder="Buscar por canción o artista…" value="${esc(ui.libQ||'')}" aria-label="Buscar alabanzas" autocomplete="off">
+    ${lostPanel()}<div class="lbar"><input type="search" id="libSearch" placeholder="Buscar por canción o artista…" value="${esc(ui.libQ||'')}" aria-label="Buscar alabanzas" autocomplete="off">
     <div class="seg" role="group" aria-label="Ordenar"><button data-libsort="az" aria-pressed="${sort==='az'}">A–Z</button><button data-libsort="usadas" aria-pressed="${sort==='usadas'}">Más cantadas</button><button data-libsort="recientes" aria-pressed="${sort==='recientes'}">Recientes</button></div></div>
     ${body}
     <p class="muted" style="font-size:.84rem;margin-top:18px">Las listas de cada culto se arman en Servicios → el culto → Editar culto.</p>`;
@@ -3207,6 +3260,7 @@ document.addEventListener('click',async e=>{
   const pwn=e.target.closest&&e.target.closest('[data-pwno]');if(pwn){if(!pwn.dataset.arm){pwn.dataset.arm=1;pwn.textContent='¿Seguro? Toca otra vez';return}return pwResolve(pwn.dataset.pwno,'dismiss')}
   const pwc=e.target.closest&&e.target.closest('[data-pwcopy]');if(pwc){try{await navigator.clipboard.writeText(pwc.dataset.pwcopy);toast('Mensaje copiado.')}catch(x){toast('No se pudo copiar.')}return}
   if(e.target.closest&&e.target.closest('[data-mypw]'))return changeMyPassword(false);
+  if(e.target.closest&&e.target.closest('[data-bulkpdf]'))return openBulkPdf();
   if(e.target.closest&&e.target.closest('[data-logout]'))return logout();
   const rqn=e.target.closest&&e.target.closest('[data-reqno]');if(rqn){if(!rqn.dataset.arm){rqn.dataset.arm=1;rqn.textContent='¿Seguro? Toca otra vez';return}const r=byId('requests',rqn.dataset.reqno);if(r&&await save('requests',{...r,status:'descartada',reviewedBy:ME}))toast('Solicitud descartada.');return render()}
   const rqs=e.target.closest&&e.target.closest('[data-reqsent]');if(rqs){const r=byId('requests',rqs.dataset.reqsent);if(r)setTimeout(async()=>{if(await save('requests',{...r,accessSent:true,accessSentAt:new Date().toISOString()}))toast('Listo: '+(r.name||'')+' ya tiene su acceso.');render()},rqs.tagName==='A'?800:0);if(rqs.tagName!=='A')return;return}
