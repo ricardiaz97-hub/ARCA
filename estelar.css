@@ -19,6 +19,7 @@
   --fg:#F5EEE6; --muted:#BFB2A3; --faint:#9C8F80;
   --rail:rgba(10,8,8,.72); --rail-fg:#F5EEE6; --rail-muted:#A99C8C; --rail-hover:rgba(255,255,255,.07); --rail-line:rgba(245,238,230,.14);
   --primary-fg:#120A06;
+  --c0:#8FB8FF; --c1:#7CD6BE; --c2:#D4A6FF; --c3:#FFB27A; --c4:#FF9A8F; --c5:#C9DB7A;
   --ink2:#9CC2FF; --ink2-soft:rgba(80,120,200,.18);
   --ok:#8FD18A; --ok-soft:rgba(110,190,100,.16); --warn:#FFC85C; --warn-soft:rgba(255,190,70,.14); --bad:#FF8F80; --bad-soft:rgba(255,110,90,.15);
   --shadow-lg:0 24px 60px -18px rgba(0,0,0,.9),0 0 0 1px rgba(245,238,230,.14);
@@ -227,3 +228,75 @@ html.lite .sky .ring,html.lite .sky .grain{display:none}
 .day.today{background:var(--acc)}
 .tb,.upd-go{letter-spacing:.02em}
 .tbtns .tb{line-height:1.15}
+
+/* =====================================================================
+   PARTE 2 · Servicios y Alabanzas
+   ===================================================================== */
+/* ---------- 13. Destellos (qué tanto conoce el equipo la canción) ---------- */
+.sparks{display:flex;gap:3px;margin-top:6px}
+.sparks i{width:14px;height:14px;background:rgba(245,238,230,.16);
+  -webkit-mask:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Cpath d='M12 0C12.6 7.6 16.4 11.4 24 12 16.4 12.6 12.6 16.4 12 24 11.4 16.4 7.6 12.6 0 12 7.6 11.4 11.4 7.6 12 0Z'/%3E%3C/svg%3E") center/contain no-repeat;
+  mask:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Cpath d='M12 0C12.6 7.6 16.4 11.4 24 12 16.4 12.6 12.6 16.4 12 24 11.4 16.4 7.6 12.6 0 12 7.6 11.4 11.4 7.6 12 0Z'/%3E%3C/svg%3E") center/contain no-repeat}
+.sparks i.on{background:linear-gradient(180deg,#FFF1C9,var(--acc-hi) 45%,var(--acc));filter:drop-shadow(0 0 4px var(--acc-glow))}
+.sparks i.on{animation:est-spark .5s cubic-bezier(.3,1.6,.5,1) both}
+.sparks i:nth-child(2){animation-delay:.08s}.sparks i:nth-child(3){animation-delay:.16s}.sparks i:nth-child(4){animation-delay:.24s}.sparks i:nth-child(5){animation-delay:.32s}
+@keyframes est-spark{from{transform:scale(0) rotate(-90deg)}}
+.lt .sparks{margin:3px 0 2px}
+
+/* ---------- 14. Al confirmar: rombo de luz y destellos ---------- */
+.est-burst{position:fixed;inset:0;z-index:95;pointer-events:none;display:grid;place-items:center}
+.est-burst .dia{grid-area:1/1;width:70px;height:70px;border:1.5px solid var(--acc-hi);transform:rotate(45deg);box-shadow:0 0 24px var(--acc),inset 0 0 18px var(--acc-glow);
+  animation:est-dia 1s cubic-bezier(.2,.8,.2,1) forwards}
+.est-burst .d2{animation-delay:.12s;border-color:#fff;box-shadow:0 0 18px #fff}
+@keyframes est-dia{from{transform:rotate(45deg) scale(.15);opacity:1}to{transform:rotate(45deg) scale(10);opacity:0}}
+.est-burst i{grid-area:1/1;width:22px;height:22px;background:linear-gradient(180deg,#FFF6DD,var(--acc-hi));filter:drop-shadow(0 0 8px var(--acc));opacity:0;
+  -webkit-mask:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Cpath d='M12 0C12.6 7.6 16.4 11.4 24 12 16.4 12.6 12.6 16.4 12 24 11.4 16.4 7.6 12.6 0 12 7.6 11.4 11.4 7.6 12 0Z'/%3E%3C/svg%3E") center/contain no-repeat;
+  mask:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Cpath d='M12 0C12.6 7.6 16.4 11.4 24 12 16.4 12.6 12.6 16.4 12 24 11.4 16.4 7.6 12.6 0 12 7.6 11.4 11.4 7.6 12 0Z'/%3E%3C/svg%3E") center/contain no-repeat;
+  animation:est-fly 1s cubic-bezier(.2,.8,.2,1) var(--d,0ms) forwards}
+@keyframes est-fly{0%{transform:translate(0,0) scale(.3);opacity:1}80%{opacity:1}100%{transform:translate(var(--dx),var(--dy)) scale(1) rotate(90deg);opacity:0}}
+
+/* ---------- 15. Biblioteca de Alabanzas ---------- */
+.lbar input{background:rgba(255,255,255,.05)}
+.lletter{font-family:var(--f-display);font-weight:700;font-stretch:100%;font-size:1.4rem;color:var(--acc-hi);display:flex;align-items:center;gap:12px;letter-spacing:.1em}
+.lletter::after{content:"";flex:1;height:1px;background:linear-gradient(90deg,var(--accent-line),transparent)}
+.llist{border-radius:0;clip-path:polygon(0 0,calc(100% - 14px) 0,100% 14px,100% 100%,14px 100%,0 calc(100% - 14px))}
+.lsong{border-top-color:var(--line)}
+.lt b{font-family:var(--f-display);letter-spacing:.02em}
+.lnext{color:var(--acc-hi)}
+.lver>b{font-family:var(--f-display);letter-spacing:.06em;font-size:.8rem;text-transform:uppercase;color:var(--muted)}
+.tb.lk{min-width:44px}
+
+/* ---------- 16. Servicios ---------- */
+.svcread .tnext li{border-top-color:var(--line)}
+.oi{border-top-color:var(--line)}
+.oi.header{background:rgba(255,255,255,.04)}
+.oi .t{color:var(--acc-hi);font-family:var(--f-display)}
+.key{font-family:var(--f-display);font-weight:700;color:var(--acc-hi)}
+.sheet td{border-bottom-color:var(--line)}
+.sheet input,.sheet select{background:transparent;border-color:transparent}
+.sheet input:focus,.sheet select:focus{background:rgba(255,255,255,.06);border-color:var(--acc)}
+.sheet td.n{color:var(--acc-hi);font-family:var(--f-display)}
+.yt,.cf,.drv,.pdfc{border-radius:0}
+.yt.has{background:rgba(255,255,255,.9);color:#120A06}
+.cf.has{background:var(--acc);color:#120A06}
+.pdfc{border:1px solid var(--acc);color:var(--acc-hi);background:transparent}
+.qa input{background:rgba(255,255,255,.04);border:1px dashed var(--line-strong);border-radius:0}
+.qs{background:rgba(255,255,255,.05);border:0;border-radius:0;box-shadow:inset 0 0 0 1px var(--line-strong);color:var(--fg)}
+.qs:hover,.qs:focus-visible{box-shadow:inset 0 0 0 1px var(--acc)}
+.qs mark{background:var(--accent-soft);color:var(--fg)}
+.qs.new .plus{background:var(--acc);color:#120A06;border-radius:0;clip-path:polygon(50% 0,100% 50%,50% 100%,0 50%)}
+.datebox small{color:var(--acc-hi);font-family:var(--f-display)}
+.datebox b{font-family:var(--f-display);font-stretch:100%;font-weight:700;font-size:1.6rem}
+.day .dh b,.rc .n,.bdday{font-family:var(--f-display);font-stretch:100%;font-weight:700}
+.rs{background:rgba(255,255,255,.05);border-color:var(--line);border-radius:0}
+.rs:hover{border-color:var(--acc)}
+
+/* ---------- 17. Setlists ---------- */
+.sl-it{background:rgba(255,255,255,.05);border:0;border-radius:0;box-shadow:inset 0 0 0 1px var(--line-strong);color:var(--fg)}
+.sl-it b{font-family:var(--f-display);letter-spacing:.03em}
+.sl-row:has(input:checked){background:var(--accent-soft);box-shadow:inset 0 0 0 1px var(--acc)}
+.sl-row input,.sl-mode input{accent-color:var(--acc)}
+.sl-wk{font-family:var(--f-display);color:var(--acc-hi)}
+.slc-l li::marker{color:var(--acc-hi);font-family:var(--f-display)}
+
+@media (prefers-reduced-motion:reduce){.sparks i.on{animation:none}.est-burst{display:none}}
