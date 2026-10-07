@@ -1,0 +1,229 @@
+/* =====================================================================
+   ARCA · VIDRIO ESTELAR  (capa 1: base + navegación + pestaña Tú)
+   Se carga DESPUÉS de los estilos de index.html y solo los sobrescribe.
+   Para volver al look anterior: quitar <link href="/estelar.css"> de index.html.
+   Naranja y negro son la casa. Alabanzas cambia a amarillo y Devocionales a morado.
+   ===================================================================== */
+
+/* ---------- 1. Colores (un solo look oscuro, gane lo que gane el sistema) ---------- */
+:root:not(#estelar){
+  --acc:#FF7A1A; --acc-hi:#FFB27A; --acc-deep:#E85D04; --acc-glow:rgba(232,93,4,.6);
+  --glass:linear-gradient(150deg,rgba(255,255,255,.13),rgba(255,255,255,.035) 45%,rgba(255,255,255,.07));
+  --glass-line:rgba(245,238,230,.30); --glass-hi:rgba(255,255,255,.45);
+  --cut:16px;
+  --f-display:"Chakra Petch","Archivo","Segoe UI",system-ui,sans-serif;
+  --f-greek:"Noto Serif Display","Times New Roman",serif;
+
+  --bg:#080606; --surface:rgba(255,255,255,.06); --sunken:rgba(255,255,255,.04); --hover:rgba(255,255,255,.09);
+  --line:rgba(245,238,230,.14); --line-strong:rgba(245,238,230,.28);
+  --fg:#F5EEE6; --muted:#BFB2A3; --faint:#9C8F80;
+  --rail:rgba(10,8,8,.72); --rail-fg:#F5EEE6; --rail-muted:#A99C8C; --rail-hover:rgba(255,255,255,.07); --rail-line:rgba(245,238,230,.14);
+  --primary-fg:#120A06;
+  --ink2:#9CC2FF; --ink2-soft:rgba(80,120,200,.18);
+  --ok:#8FD18A; --ok-soft:rgba(110,190,100,.16); --warn:#FFC85C; --warn-soft:rgba(255,190,70,.14); --bad:#FF8F80; --bad-soft:rgba(255,110,90,.15);
+  --shadow-lg:0 24px 60px -18px rgba(0,0,0,.9),0 0 0 1px rgba(245,238,230,.14);
+  --scrim:rgba(0,0,0,.62); --grain-op:0;
+  color-scheme:dark;
+}
+/* Los colores que dependen del acento se calculan en <body>, para que cambien con la pestaña */
+body{--primary:var(--acc);--gold:var(--acc);--accent:var(--acc-hi);--accent-soft:color-mix(in srgb,var(--acc) 16%,transparent);--accent-line:color-mix(in srgb,var(--acc) 50%,transparent)}
+/* Pestañas invitadas */
+body[data-route="alabanzas"]{--acc:#FFD21F;--acc-hi:#FFE680;--acc-deep:#E8B800;--acc-glow:rgba(255,210,31,.5)}
+body[data-route="devocionales"]{--acc:#A35BFF;--acc-hi:#CFA8FF;--acc-deep:#8A3CF0;--acc-glow:rgba(163,91,255,.6)}
+
+html{background:#080606}
+body{background:transparent;color:var(--fg)}
+body::before{display:none} /* el grano viejo de papel */
+::selection{background:var(--acc);color:#120A06}
+
+/* ---------- 2. Cielo: nebulosa, estrellas y anillo ---------- */
+.sky{position:fixed;inset:0;z-index:-1;pointer-events:none;overflow:hidden;
+  background:
+    radial-gradient(55% 35% at 85% 6%,var(--acc-glow),transparent 70%),
+    radial-gradient(60% 40% at 0% 55%,color-mix(in srgb,var(--acc) 26%,transparent),transparent 72%),
+    radial-gradient(70% 40% at 60% 105%,color-mix(in srgb,var(--acc) 18%,transparent),transparent 70%),
+    linear-gradient(180deg,#120C0A,#050404);
+  transition:background 0.6s ease}
+.sky .stars{position:absolute;inset:0;background-image:
+  radial-gradient(1.2px 1.2px at 12% 18%,#fff,transparent),radial-gradient(1px 1px at 28% 64%,#fff,transparent),radial-gradient(1.4px 1.4px at 46% 30%,#FFE7C2,transparent),
+  radial-gradient(1px 1px at 63% 82%,#fff,transparent),radial-gradient(1.6px 1.6px at 78% 46%,#fff,transparent),radial-gradient(1px 1px at 88% 14%,#FFE2CC,transparent),
+  radial-gradient(1px 1px at 8% 88%,#fff,transparent),radial-gradient(1.2px 1.2px at 52% 56%,#fff,transparent),radial-gradient(1px 1px at 36% 8%,#fff,transparent),
+  radial-gradient(1px 1px at 70% 22%,#fff,transparent),radial-gradient(1.3px 1.3px at 18% 42%,#fff,transparent),radial-gradient(1px 1px at 94% 70%,#fff,transparent);
+  animation:est-twinkle 5s ease-in-out infinite alternate}
+@keyframes est-twinkle{to{opacity:.4}}
+.sky .ring{position:absolute;width:max(130vw,900px);aspect-ratio:1;right:-55vw;top:-70vw;border-radius:50%;
+  border:1px dashed color-mix(in srgb,var(--acc) 35%,transparent);
+  box-shadow:0 0 0 28px rgba(255,255,255,.012),0 0 0 29px color-mix(in srgb,var(--acc) 14%,transparent);
+  animation:est-spin 120s linear infinite}
+@keyframes est-spin{to{transform:rotate(360deg)}}
+.sky .grain{position:absolute;inset:0;opacity:.12;mix-blend-mode:overlay;
+  background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='200' height='200'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.85' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='200' height='200' filter='url(%23n)'/%3E%3C/svg%3E")}
+
+/* ---------- 3. Tipografía ---------- */
+h1,.th2,.tday,.when,.wz-h b,.drawer-h h2,.rolt,.psec{font-family:var(--f-display)}
+h1{font-weight:700;font-stretch:100%;letter-spacing:.01em}
+h1::after{background:var(--acc)}
+h2{font-family:var(--f-display);font-stretch:100%;letter-spacing:.06em}
+.head{border-bottom:1px solid var(--glass-line)}
+.eyebrow,th{font-family:var(--f-display);letter-spacing:.16em;color:var(--muted)}
+.head p,.muted{color:var(--muted)}
+
+/* ---------- 4. Vidrio ---------- */
+.panel,.tcard,.week,.llist,.pcard,.tk,.tkcol,.card,.col,.socc,.invp,.pjhero,.pj{
+  background:var(--glass);
+  -webkit-backdrop-filter:blur(18px) saturate(150%);backdrop-filter:blur(18px) saturate(150%);
+  border:0;box-shadow:inset 0 0 0 1px var(--glass-line),inset 0 1px 0 var(--glass-hi);
+  color:var(--fg)}
+.panel,.tcard{position:relative;border-radius:0;
+  clip-path:polygon(0 0,calc(100% - var(--cut)) 0,100% var(--cut),100% 100%,var(--cut) 100%,0 calc(100% - var(--cut)))}
+/* escuadras en las esquinas y la diagonal de los cortes */
+.tcard::before,.panel::before{content:"";position:absolute;inset:0;pointer-events:none;z-index:1;
+  background:
+    linear-gradient(225deg,transparent 11px,var(--glass-line) 11.5px,var(--glass-line) 12.5px,transparent 13px) top right/24px 24px no-repeat,
+    linear-gradient(45deg,transparent 11px,var(--glass-line) 11.5px,var(--glass-line) 12.5px,transparent 13px) bottom left/24px 24px no-repeat,
+    linear-gradient(var(--acc),var(--acc)) 9px 9px/13px 1.5px no-repeat,linear-gradient(var(--acc),var(--acc)) 9px 9px/1.5px 13px no-repeat,
+    linear-gradient(var(--acc),var(--acc)) right 9px bottom 9px/13px 1.5px no-repeat,linear-gradient(var(--acc),var(--acc)) right 9px bottom 9px/1.5px 13px no-repeat}
+.panel-h{border-bottom:1px solid var(--line)}
+.totals,.setpdf{background:rgba(255,255,255,.03);border-top:1px solid var(--line)}
+.info{background:rgba(255,255,255,.04);border:1px dashed var(--line-strong);color:var(--fg)}
+.info.gold{background:var(--accent-soft);border-color:var(--accent-line)}
+.info.warn{background:var(--bad-soft);color:var(--bad);border-color:transparent}
+.list li{border-top-color:var(--line)}
+.list li.wk{background:rgba(255,255,255,.035)}
+
+/* ventanas: hojas y asistentes */
+.drawer,.wz,.pal{background:linear-gradient(160deg,rgba(30,22,18,.92),rgba(12,9,8,.94));
+  -webkit-backdrop-filter:blur(24px) saturate(150%);backdrop-filter:blur(24px) saturate(150%);
+  border:0;box-shadow:inset 0 0 0 1px var(--glass-line),inset 0 1px 0 var(--glass-hi),0 30px 80px -20px #000;color:var(--fg)}
+.drawer-h,.wz-h{border-bottom:1px solid var(--glass-line)}
+.drawer-f,.wz-f{background:rgba(255,255,255,.03);border-top:1px solid var(--line)}
+.wz-key,.wz-up,.wz-in,.upd-a,.tp-opt{background:rgba(255,255,255,.05);border-color:var(--line-strong);color:var(--fg)}
+.wz-key.on{background:var(--acc);color:#120A06;border-color:var(--acc)}
+input[type=text],input[type=url],input[type=search],input[type=email],input[type=tel],input[type=date],input[type=time],input[type=number],input[type=password],select,textarea{
+  background:rgba(255,255,255,.05);border:1px solid var(--line-strong);border-radius:0;color:var(--fg)}
+input:focus,select:focus,textarea:focus{border-color:var(--acc);box-shadow:0 0 0 3px var(--accent-soft)}
+option{background:#140F0C;color:var(--fg)}
+.toast{background:rgba(14,10,8,.92);-webkit-backdrop-filter:blur(14px);backdrop-filter:blur(14px);border:1px solid var(--acc);color:var(--fg);border-radius:0;
+  clip-path:polygon(10px 0,100% 0,100% calc(100% - 10px),calc(100% - 10px) 100%,0 100%,0 10px)}
+.toast::before{background:var(--acc)}
+
+/* ---------- 5. Botones ---------- */
+.btn,.tb,.upd-go{border-radius:0;font-family:var(--f-display);letter-spacing:.08em;
+  clip-path:polygon(10px 0,100% 0,100% calc(100% - 10px),calc(100% - 10px) 100%,0 100%,0 10px)}
+.btn{border:0;background:rgba(255,255,255,.06);color:var(--fg);box-shadow:inset 0 0 0 1px var(--line-strong)}
+.tb{border:0;background:rgba(255,255,255,.06);color:var(--fg);box-shadow:inset 0 0 0 1px var(--line-strong)}
+.btn.ghost{background:none;box-shadow:none;color:var(--muted)}
+.btn.primary,.tb.ok,.soc-inv,.tbig,.upd-a.fin{background:linear-gradient(180deg,var(--acc-hi),var(--acc));color:#120A06;box-shadow:inset 0 -3px 0 rgba(0,0,0,.3),0 0 22px var(--acc-glow);border:0}
+.tb.pdf{background:rgba(255,255,255,.92);color:#120A06;box-shadow:none}
+.tb.aud{background:linear-gradient(180deg,#3E2A7A,#24184A);color:#F2EBFF;box-shadow:inset 0 0 0 1px rgba(207,168,255,.45)}
+.tb.warn{box-shadow:inset 0 0 0 1px var(--bad);color:var(--bad)}
+.tb.wa{background:#1f7a4a;color:#fff;box-shadow:none}
+.upd-go{background:var(--acc);color:#120A06}
+.upd-go.ghost{background:none;color:var(--fg);border:0;box-shadow:inset 0 0 0 1px var(--line-strong)}
+@media (hover:hover) and (pointer:fine){
+  .btn:hover,.tb:hover{background:rgba(255,255,255,.12);color:var(--fg);box-shadow:inset 0 0 0 1px var(--acc)}
+  .btn.primary:hover,.tb.ok:hover{background:linear-gradient(180deg,#fff,var(--acc-hi));color:#120A06}
+}
+.seg{border:0;background:rgba(255,255,255,.05);border-radius:0;box-shadow:inset 0 0 0 1px var(--line-strong)}
+.seg button{border-radius:0;font-family:var(--f-display);letter-spacing:.06em;color:var(--muted)}
+.seg button[aria-pressed="true"]{background:var(--acc);color:#120A06}
+.chip{background:rgba(255,255,255,.07);color:var(--muted);border-radius:0}
+.pill{border-radius:0}
+.key{background:rgba(0,0,0,.5);color:var(--acc-hi);box-shadow:inset 0 0 0 1px var(--accent-line);border-radius:0}
+
+/* ---------- 6. Navegación ---------- */
+.rail{background:var(--rail);-webkit-backdrop-filter:blur(22px) saturate(160%);backdrop-filter:blur(22px) saturate(160%);
+  box-shadow:inset -1px 0 0 var(--glass-line)}
+.nav{font-family:var(--f-display);letter-spacing:.06em;border-radius:0}
+.nav[aria-current="page"]{background:linear-gradient(90deg,var(--accent-soft),transparent);color:var(--fg)}
+.nav[aria-current="page"]::before{-webkit-mask:none;mask:none;border-radius:0;width:9px;height:9px;margin-top:-4.5px;transform:rotate(45deg);
+  background:var(--acc);box-shadow:0 0 10px var(--acc);animation:none}
+.nav[aria-current="page"] svg{color:var(--acc-hi);filter:drop-shadow(0 0 6px var(--acc-glow))}
+.nbadge{background:var(--acc);color:#120A06;box-shadow:0 0 0 2px #0A0808,0 0 10px var(--acc-glow);border-radius:0;clip-path:polygon(4px 0,100% 0,100% calc(100% - 4px),calc(100% - 4px) 100%,0 100%,0 4px)}
+.cmd{border-radius:0;border-color:var(--rail-line)}
+.rail-foot{border-top-color:var(--rail-line)}
+@media (max-width:760px){
+  .rail{left:10px;right:10px;bottom:calc(8px + env(safe-area-inset-bottom,0px));padding:6px 4px;border-top:0;
+    background:linear-gradient(180deg,rgba(255,255,255,.12),rgba(255,255,255,.04)),rgba(10,8,8,.6);
+    box-shadow:inset 0 1px 0 color-mix(in srgb,var(--acc) 65%,transparent),inset 0 0 0 1px var(--glass-line),0 18px 40px -12px #000;
+    clip-path:polygon(14px 0,calc(100% - 14px) 0,100% 14px,100% 100%,0 100%,0 14px)}
+  .nav[aria-current="page"]{background:none;color:#fff}
+  .nav[aria-current="page"]::before{top:-1px;left:50%;margin:0 0 0 -4.5px}
+  .mbar{background:rgba(10,8,8,.72);-webkit-backdrop-filter:blur(18px);backdrop-filter:blur(18px);border-bottom:1px solid color-mix(in srgb,var(--acc) 55%,transparent)}
+  .mbar button{border-radius:0;border-color:var(--glass-line)}
+  .main{padding-block:20px 120px}
+}
+
+/* ---------- 7. Pestaña Tú ---------- */
+.turno-top{border-bottom:1px solid var(--glass-line)}
+.turno h1{font-size:clamp(2.2rem,1.7rem + 2.6vw,3.2rem);letter-spacing:.005em}
+.meph{border-radius:0;clip-path:polygon(50% 0,100% 50%,50% 100%,0 50%);box-shadow:none;filter:drop-shadow(0 0 14px var(--acc-glow))}
+img.meph{object-fit:cover}
+.me-top{gap:18px}
+.when{color:var(--acc-hi);letter-spacing:.22em;font-size:.82rem;display:flex;align-items:center;gap:9px}
+.when::before{content:"";width:8px;height:8px;flex:none;background:var(--acc);transform:rotate(45deg);box-shadow:0 0 10px var(--acc);animation:est-pulse 1.8s ease-in-out infinite}
+@keyframes est-pulse{50%{opacity:.35}}
+.tday{font-weight:700;font-stretch:100%;letter-spacing:.02em;font-size:clamp(1.9rem,1.5rem + 2.4vw,2.6rem);line-height:1.02}
+.tinfo{color:var(--muted)}
+.role{background:linear-gradient(90deg,var(--acc),color-mix(in srgb,var(--acc) 55%,transparent));color:#120A06;border-radius:0;font-size:1rem;
+  clip-path:polygon(10px 0,100% 0,calc(100% - 10px) 100%,0 100%);padding:9px 22px}
+.role.lead{background:linear-gradient(90deg,#FFE7C2,var(--acc-hi));color:#120A06}
+.tconf{border-top:1px dashed var(--line-strong)}
+.tsel-b{border-radius:0;background:rgba(255,255,255,.05);border:0;box-shadow:inset 0 0 0 1px var(--line-strong);color:var(--fg);
+  clip-path:polygon(8px 0,100% 0,100% calc(100% - 8px),calc(100% - 8px) 100%,0 100%,0 8px)}
+.tsel-b.on{background:var(--acc);color:#120A06;box-shadow:0 0 20px var(--acc-glow)}
+.tsongs li{border-top-color:var(--line)}
+.tsn .num{font-family:var(--f-display);font-weight:700;font-size:1rem;color:var(--acc-hi);letter-spacing:.06em;width:30px}
+.tsn .num::before{content:"0"}
+.bigkey{width:54px;min-width:54px;height:54px;border-radius:0;position:relative;isolation:isolate;background:var(--acc);color:#FFF4E8;
+  clip-path:polygon(50% 0,100% 50%,50% 100%,0 50%);box-shadow:none;font-family:var(--f-display);font-weight:700;font-stretch:100%;font-size:1.2rem}
+.bigkey::before{content:"";position:absolute;inset:1.5px;z-index:-1;background:radial-gradient(circle at 50% 30%,#2A1A10,#0C0907);clip-path:inherit}
+.bigkey.sm{width:44px;min-width:44px;height:44px;font-size:1rem}
+.bigkey.none{background:var(--line-strong);color:var(--muted)}
+.calb,.calmini{border-radius:0;border:0;box-shadow:inset 0 0 0 1px var(--line-strong)}
+.vc{border-radius:0;background:rgba(255,255,255,.06);border-color:var(--line)}
+.tsb{border-radius:0}
+.mytk-c{border-radius:0;transform:rotate(45deg) scale(.8);background:transparent;border-color:var(--acc)}
+.devonew{background:linear-gradient(150deg,var(--accent-soft),rgba(255,255,255,.03))}
+
+/* ---------- 8. Inicio de sesión ---------- */
+body.locked #gate{background:transparent}
+.gate-card{background:linear-gradient(150deg,rgba(255,255,255,.12),rgba(255,255,255,.04));-webkit-backdrop-filter:blur(20px);backdrop-filter:blur(20px);
+  color:var(--fg);border:0;border-radius:0;box-shadow:inset 0 0 0 1px var(--glass-line),inset 0 1px 0 var(--glass-hi),0 30px 70px -20px #000;
+  clip-path:polygon(0 0,calc(100% - 18px) 0,100% 18px,100% 100%,18px 100%,0 calc(100% - 18px))}
+.gate-card h1{font-family:var(--f-display);letter-spacing:.06em}
+.gate-card input{background:rgba(255,255,255,.06);border:1px solid var(--line-strong);border-radius:0;color:var(--fg)}
+.gate-card input:focus{border-color:var(--acc)}
+.gate-sub{color:var(--muted)}
+.gate-logo{filter:drop-shadow(0 0 18px var(--acc-glow))}
+
+/* ---------- 9. Detalles en griego (solo adorno) ---------- */
+.gr{font-family:var(--f-greek);letter-spacing:.32em;font-weight:500;color:var(--muted);font-size:.78rem}
+
+/* ---------- 10. Entrada ---------- */
+@keyframes est-in{from{opacity:0;transform:translateY(10px);filter:blur(6px)}}
+.turno>*{animation:est-in .7s cubic-bezier(.2,.8,.2,1) both}
+.turno>*:nth-child(2){animation-delay:.05s}.turno>*:nth-child(3){animation-delay:.1s}.turno>*:nth-child(4){animation-delay:.15s}.turno>*:nth-child(n+5){animation-delay:.2s}
+
+/* ---------- 11. Teléfonos lentos y "reducir movimiento" ---------- */
+html.lite .panel,html.lite .tcard,html.lite .week,html.lite .llist,html.lite .pcard,html.lite .tk,html.lite .rail,html.lite .drawer,html.lite .wz,html.lite .mbar,html.lite .gate-card,html.lite .toast{
+  -webkit-backdrop-filter:none;backdrop-filter:none}
+html.lite .panel,html.lite .tcard,html.lite .pcard,html.lite .llist{background:linear-gradient(150deg,#1D1612,#120D0B)}
+html.lite .sky .ring,html.lite .sky .grain{display:none}
+@media (prefers-reduced-motion:reduce){
+  .sky .stars,.sky .ring,.when::before,.turno>*{animation:none!important}
+}
+@media (prefers-reduced-transparency:reduce){
+  .panel,.tcard,.rail,.drawer,.wz{-webkit-backdrop-filter:none;backdrop-filter:none;background:#15100D}
+}
+
+/* ---------- 12. Ajustes ---------- */
+.tourhint{background:var(--glass);-webkit-backdrop-filter:blur(18px);backdrop-filter:blur(18px);color:var(--fg);border-radius:0;
+  box-shadow:inset 0 0 0 1px var(--accent-line),0 0 30px -10px var(--acc-glow);clip-path:polygon(0 0,calc(100% - 14px) 0,100% 14px,100% 100%,14px 100%,0 calc(100% - 14px))}
+.tourhint .icon-btn{color:var(--fg)}
+.meph:not(img){background:linear-gradient(160deg,var(--acc-hi),var(--acc-deep));color:#120A06}
+.gate-card a,.gate-card .linkb,.gate-card button.linkb{color:var(--acc-hi)}
+.tour-card{background:linear-gradient(160deg,rgba(30,22,18,.95),rgba(12,9,8,.97));color:var(--fg);border:0;border-radius:0;box-shadow:inset 0 0 0 1px var(--accent-line),0 20px 50px #000}
+.day.today{background:var(--acc)}
+.tb,.upd-go{letter-spacing:.02em}
+.tbtns .tb{line-height:1.15}
