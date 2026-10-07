@@ -11,7 +11,7 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Archivo:ital,wdth,wght@0,62..125,400..900;1,100,500&family=Chakra+Petch:wght@500;600;700&family=Noto+Serif+Display:wght@500&display=swap">
-<script>/* Vidrio estelar: modo ligero en teléfonos con poca memoria o ahorro de datos */try{var n=navigator,c=n.connection||{};if((n.deviceMemory&&n.deviceMemory<=3)||c.saveData||/[?&]lite\b/.test(location.search))document.documentElement.classList.add("lite")}catch(e){}</script>
+<script>/* Vidrio estelar: modo ligero en teléfonos con poca memoria o ahorro de datos */try{var n=navigator,c=n.connection||{};var m=null;try{m=localStorage.getItem("arca.lite")}catch(_){}if(m==="1"||(m!=="0"&&((n.deviceMemory&&n.deviceMemory<=3)||c.saveData||/[?&]lite\b/.test(location.search))))document.documentElement.classList.add("lite")}catch(e){}</script>
 </head><body class="locked">
 <style>
 /* Layout: ink rail + quiet canvas. Gold marks only "now" (today, active, next). Every edit happens in one sheet. */
@@ -1408,6 +1408,7 @@ document.addEventListener('visibilitychange',()=>{if(document.visibilityState===
 window.addEventListener('online',()=>{LAST_SYNC=0;liveResume()});
 
 if('serviceWorker' in navigator)window.addEventListener('load',()=>navigator.serviceWorker.register('/sw.js').catch(()=>{}));
+document.addEventListener('click',e=>{const t=e.target.closest&&e.target.closest('[data-lite]');if(!t)return;const on=document.documentElement.classList.toggle('lite');try{localStorage.setItem('arca.lite',on?'1':'0')}catch(_){}toast(on?'Modo ligero encendido: sin desenfoque ni animaciones de fondo.':'Modo ligero apagado.');render()});
 document.addEventListener('click',e=>{const b=e.target.closest&&e.target.closest('[data-pwshow]');if(!b)return;e.preventDefault();
   const i=b.parentElement.querySelector('input');if(!i)return;const show=i.type==='password';i.type=show?'text':'password';
   b.textContent=show?'Ocultar':'Ver';b.setAttribute('aria-pressed',String(show));b.setAttribute('aria-label',show?'Ocultar contraseña':'Mostrar contraseña');i.focus()});
@@ -2029,7 +2030,7 @@ function vTurno(){
   const sup=SUPERVISORS.includes(ME)?superPanel():'';
   const later=next.length?`<details class="tcard tfold" data-fold="fechas" ${foldAttr('fechas')}><summary><h2 class="th2">Tus próximas fechas</h2><p class="small">${next.length} ${next.length===1?'fecha':'fechas'}</p></summary><ul class="tnext">${next.map(y=>{const b=(y.assignments||[]).find(a=>a.personId===ME);return `<li><button class="linkb tnext-open" data-tsel="${y.id}"><b>${esc(LDOW[parse(y.date).getDay()].replace(/^./,c=>c.toUpperCase()))} ${parse(y.date).getDate()} de ${esc(parse(y.date).toLocaleDateString('es',{month:'long'}))}</b> · ver</button><span>${esc(ampm(y.time))} · ${esc(y.title)}${isLead(b)?' · <strong>diriges</strong>':''}${b.status==='declinado'?' · no vas':b.status!=='confirmado'?' · <em class="pendq">sin confirmar</em>':''}</span>${b.status!=='confirmado'&&b.status!=='declinado'?`<span class="tbtns" style="margin:6px 0 0"><button class="tb sm ok" data-can="${y.id}">Confirmo</button><button class="tb sm warn" data-cant="${y.id}">No puedo</button></span>`:''}</li>`}).join('')}</ul></details>`:'';
   return `<div class="turno">${head}${CANWRITE===false&&mode==='live'?`<div class="info warn" role="alert" style="margin-bottom:14px"><b>Estás viendo Arca como invitado.</b> Puedes ver todo, pero no confirmar. Suele pasar al abrir el link desde WhatsApp o Gmail: ábrelo en Safari o Chrome con tu sesión de Arca iniciada (o desde la app de Arca), con el correo de tu cuenta de Arca.</div>`:''}${mgr}${svcFold}${devoPanel()}${myTasksPanel()}${reviewPanel()}${keysPanel()}${reqPanel()}${pwPanel()}${sup}${later}${helpLine()}</div>`}
-function helpLine(){return `<p class="small center"><button class="linkb" data-tourstart>¿Cómo se usa Arca?</button> · <button class="linkb" data-go="inicio">Ir a la app completa</button> · <button class="linkb" data-mypw>Cambiar mi contraseña</button> · <button class="linkb" data-logout>Cerrar sesión</button></p>`}
+function helpLine(){const lite=document.documentElement.classList.contains('lite');return `<p class="small center"><button class="linkb" data-lite aria-pressed="${lite}">Modo ligero: ${lite?'encendido':'apagado'}</button> · <button class="linkb" data-tourstart>¿Cómo se usa Arca?</button> · <button class="linkb" data-go="inicio">Ir a la app completa</button> · <button class="linkb" data-mypw>Cambiar mi contraseña</button> · <button class="linkb" data-logout>Cerrar sesión</button></p>`}
 async function setMyStatus(sid,st){const svc=svcLookup(sid);if(!svc)return;
   const list=(svc.assignments||[]).map(a=>a.personId===ME?{...a,status:st}:a);
   const ok=await save('services',{...svc,assignments:list});ui.saveFail=ok?'':sid;if(ok&&st==='confirmado')estBurst();if(ok)toast(st==='declinado'?'Listo. Quedó marcado que no puedes ir.':'Listo. Quedaste confirmado.');render()}

@@ -300,3 +300,100 @@ html.lite .sky .ring,html.lite .sky .grain{display:none}
 .slc-l li::marker{color:var(--acc-hi);font-family:var(--f-display)}
 
 @media (prefers-reduced-motion:reduce){.sparks i.on{animation:none}.est-burst{display:none}}
+
+/* =====================================================================
+   PARTE 3 · Devocionales, Personas, Equipos, Calendario, Tareas, ventanas y PDF
+   ===================================================================== */
+/* ---------- 18. Devocionales ---------- */
+.devo-card{border:0;border-radius:0;background:var(--glass);-webkit-backdrop-filter:blur(18px);backdrop-filter:blur(18px);color:var(--fg);
+  box-shadow:inset 0 0 0 1px var(--glass-line),inset 0 1px 0 var(--glass-hi);
+  clip-path:polygon(0 0,calc(100% - 16px) 0,100% 16px,100% 100%,16px 100%,0 calc(100% - 16px))}
+.devo-card img{background:#0C0907}
+.devo-play{border-radius:0;clip-path:polygon(50% 0,100% 50%,50% 100%,0 50%);background:var(--acc);color:#120A06;width:50px;height:50px}
+.devo-b small{color:var(--acc-hi);font-family:var(--f-display)}
+.devo-b b{font-family:var(--f-display);font-stretch:100%;font-weight:700;letter-spacing:.02em}
+.devo-v{border:0;border-radius:0;box-shadow:inset 0 0 0 1px var(--accent-line),0 0 40px -10px var(--acc-glow);
+  clip-path:polygon(0 0,calc(100% - 16px) 0,100% 16px,100% 100%,16px 100%,0 calc(100% - 16px))}
+.devo-verse{color:var(--acc-hi);font-family:var(--f-display);letter-spacing:.04em}
+.devo-seen li{border-radius:0;border-color:var(--line-strong);background:rgba(255,255,255,.04)}
+.devonew{box-shadow:inset 0 0 0 1px var(--accent-line),0 0 30px -12px var(--acc-glow)}
+.tk-new{border-radius:0;background:var(--acc);color:#120A06}
+
+/* ---------- 19. Personas y Equipos ---------- */
+.pcard{border-radius:0;clip-path:polygon(0 0,calc(100% - 14px) 0,100% 14px,100% 100%,14px 100%,0 calc(100% - 14px))}
+.pcard.pkey{border:0;box-shadow:inset 0 0 0 1px var(--accent-line),inset 0 1px 0 var(--glass-hi),0 0 30px -12px var(--acc-glow)}
+.pcard.pkey .pmain{background:linear-gradient(90deg,var(--accent-soft),transparent)}
+.pmain:hover{background:rgba(255,255,255,.05)}
+.pphoto{box-shadow:0 0 0 2px #0A0808,0 0 0 3.5px var(--accent-line)}
+.pcard.pkey .pphoto{box-shadow:0 0 0 2px #0A0808,0 0 0 4px var(--acc),0 0 18px var(--acc-glow)}
+.pname b{font-family:var(--f-display);font-stretch:100%;font-weight:700;letter-spacing:.02em}
+.ptitles{color:var(--acc-hi)}
+.krole{background:var(--acc);color:#120A06;border-radius:0;font-family:var(--f-display)}
+.pinfo{border-top-color:var(--line)}
+.pinfo .lbl{font-family:var(--f-display);color:var(--muted)}
+.pinfo a:hover{color:var(--acc-hi)}
+.chip.ttl{background:var(--accent-soft);color:var(--acc-hi)}
+.team{clip-path:polygon(0 0,calc(100% - 16px) 0,100% 16px,100% 100%,16px 100%,0 calc(100% - 16px))}
+.tcol{background:#0A0808;border-bottom:1px solid var(--accent-line);border-radius:0}
+.tcol-m{background:#0A0808;color:var(--acc-hi)}
+.invp{border:0;background:linear-gradient(120deg,var(--accent-soft),rgba(255,255,255,.03));box-shadow:inset 0 0 0 1px var(--accent-line)}
+
+/* ---------- 20. Calendario ---------- */
+.cal .dow,.rolgrid .dow{border-bottom-color:var(--line-strong)}
+.cell,.rc{border-color:var(--line)}
+.cell.out,.rc.out{background:rgba(0,0,0,.25)}
+.cell .n{font-family:var(--f-display)}
+.cell.today .n{background:var(--acc);color:#120A06;border-radius:0;clip-path:polygon(50% 0,100% 50%,50% 100%,0 50%);width:28px;height:28px}
+.rc.today{background:var(--accent-soft)}
+.ev{border-radius:0}
+.ev.svc{background:color-mix(in srgb,var(--acc) 22%,transparent);color:var(--acc-hi);box-shadow:inset 2px 0 0 var(--acc)}
+.ev.evt{background:rgba(124,214,190,.14);color:#9DE6D2;box-shadow:inset 2px 0 0 #7CD6BE}
+.ev.bd{background:rgba(255,210,31,.18);color:#FFE680;box-shadow:inset 2px 0 0 #FFD21F}
+.legend .sw{border-radius:0;transform:rotate(45deg)}
+.hbd{background:linear-gradient(120deg,#FFD21F,var(--acc));border:0;border-radius:0;clip-path:polygon(0 0,calc(100% - 16px) 0,100% 16px,100% 100%,16px 100%,0 calc(100% - 16px))}
+
+/* ---------- 21. Tareas ---------- */
+.pj{border-radius:0;--pj-w:rgba(255,255,255,.04)}
+.pj.sel{box-shadow:inset 0 0 0 1px var(--acc),0 0 24px -10px var(--acc-glow)}
+.pj-pct,.pjhero .big,.tkcol>summary .cnt{font-family:var(--f-display);font-stretch:100%;font-weight:700}
+.pjbar{background:rgba(255,255,255,.08);box-shadow:none;border-radius:0}
+.pjbar i{border-radius:0;background:linear-gradient(90deg,#FFF1C9,var(--acc-hi) 40%,var(--acc))}
+.pjhero{border:0;border-radius:0;box-shadow:inset 0 0 0 1px var(--glass-line);--pj-w:rgba(255,255,255,.04)}
+.tkcol{border-radius:0}
+.tk{border:0;border-radius:0;background:rgba(255,255,255,.05);box-shadow:inset 0 0 0 1px var(--line-strong)}
+.tk.s-doing{box-shadow:inset 3px 0 0 var(--acc),inset 0 0 0 1px var(--line-strong)}
+.tk.s-review{box-shadow:inset 3px 0 0 var(--ink2),inset 0 0 0 1px var(--line-strong)}
+.tk.late{box-shadow:inset 3px 0 0 var(--bad),inset 0 0 0 1px var(--line-strong)}
+.tk.s-done{background:var(--ok-soft);box-shadow:none}
+.tk-title{font-family:var(--f-display);letter-spacing:.01em}
+.tk-ck{background:rgba(0,0,0,.25);border-radius:0;border-color:var(--line-strong)}
+.tk-ck input{accent-color:var(--acc)}
+.tk-upd{border-radius:0;background:var(--accent-soft);border-left-color:var(--acc)}
+.tkfab{border:0;border-radius:0;background:var(--acc);color:#120A06;clip-path:polygon(50% 0,100% 50%,50% 100%,0 50%);width:62px;height:62px;box-shadow:none}
+.tkadd{border-radius:0}
+.lockp{border:1px dashed var(--line-strong);background:var(--glass)}
+
+/* ---------- 22. Ventanas, menús y visor de PDF ---------- */
+.wz-prog li::before{border-radius:0;background:var(--line-strong)}
+.wz-prog li.done::before{background:var(--fg)}.wz-prog li.on::before{background:var(--acc);box-shadow:0 0 10px var(--acc-glow)}
+.wz-q{font-family:var(--f-display);font-stretch:100%;font-weight:700;letter-spacing:.03em}
+.wz-in,.wz-key,.wz-up,.upd-a,.tp-opt{border-radius:0}
+.wz-up.ok{border-color:var(--ok);color:var(--ok)}
+.tp-semi{background:var(--accent-soft);border-radius:0}
+.tp-prev{border-radius:0;border:0;box-shadow:0 0 0 1px var(--accent-line)}
+.pal li.opt[aria-selected="true"]{background:var(--accent-soft)}
+.pal input{color:var(--fg)}
+.pdfv{background:#060505}
+.pdfv-h{background:rgba(14,10,8,.9);border-bottom:1px solid var(--acc);font-family:var(--f-display)}
+.pdfv-x{border-radius:0;font-family:var(--f-display);letter-spacing:.06em;background:var(--acc);color:#120A06;
+  clip-path:polygon(8px 0,100% 0,100% calc(100% - 8px),calc(100% - 8px) 100%,0 100%,0 8px)}
+.pdfv-dl{background:transparent;color:var(--fg);box-shadow:inset 0 0 0 1px var(--acc)}
+.pdfv-b canvas{box-shadow:0 0 0 1px var(--line-strong),0 20px 50px -20px #000}
+.noconn{border:0;border-radius:0;background:var(--glass);box-shadow:inset 0 0 0 1px var(--glass-line)}
+.noconn li::before{border-radius:0;clip-path:polygon(50% 0,100% 50%,50% 100%,0 50%);background:var(--acc)}
+.mycapo{border-radius:0;border:0;box-shadow:inset 0 0 0 1px var(--line-strong);background:rgba(255,255,255,.04)}
+.mycapo.on{box-shadow:inset 0 0 0 1px var(--acc);background:var(--accent-soft)}
+
+/* ---------- 23. Modo ligero: también sin animaciones de fondo ---------- */
+html.lite .sky .stars,html.lite .when::before,html.lite .turno>*{animation:none}
+html.lite .tcard::before,html.lite .panel::before{display:none}
