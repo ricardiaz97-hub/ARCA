@@ -3,14 +3,15 @@
 <link rel="icon" type="image/png" href="/img/icon-192.png">
 <link rel="apple-touch-icon" href="/img/apple-touch-icon.png">
 <link rel="manifest" href="/manifest.webmanifest">
-<meta name="theme-color" content="#181512">
+<meta name="theme-color" content="#080606">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-title" content="Arca">
 <meta name="apple-mobile-web-app-status-bar-style" content="black">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Archivo:ital,wdth,wght@0,62..125,400..900;1,100,500&display=swap">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Archivo:ital,wdth,wght@0,62..125,400..900;1,100,500&family=Chakra+Petch:wght@500;600;700&family=Noto+Serif+Display:wght@500&display=swap">
+<script>/* Vidrio estelar: modo ligero en teléfonos con poca memoria o ahorro de datos */try{var n=navigator,c=n.connection||{};if((n.deviceMemory&&n.deviceMemory<=3)||c.saveData||/[?&]lite\b/.test(location.search))document.documentElement.classList.add("lite")}catch(e){}</script>
 </head><body class="locked">
 <style>
 /* Layout: ink rail + quiet canvas. Gold marks only "now" (today, active, next). Every edit happens in one sheet. */
@@ -1082,6 +1083,8 @@ button.pdfc{cursor:pointer;font:inherit;font-size:.76rem;font-weight:800}
 }
 @media (prefers-reduced-motion:reduce){.pjbar i{transition:none}.tkcol>summary .chev{transition:none}}
 </style>
+<link rel="stylesheet" href="/estelar.css">
+<div class="sky" aria-hidden="true"><i class="stars"></i><i class="ring"></i><i class="grain"></i></div>
 
 <div class="app">
   <nav class="rail" aria-label="Secciones">
@@ -1987,7 +1990,7 @@ function vTurno(){
   const mine=sortBy(svcsBetween(TODAY,upto).filter(x=>!x.cancelled&&(x.assignments||[]).some(a=>a.personId===ME)),x=>x.date+(x.time||'')).filter(x=>x.date>TODAY||mins(x.time)+120>=nowM);
   const first=me.name.split(/\s+/)[0];
   const isBd=bdayMD(me)===TODAY.slice(5);
-  const head=(isBd?`<section class="hbd" style="margin-bottom:16px"><div class="hbd-t"><span class="spark"></span><div><h2>¡Feliz cumpleaños, ${esc(first)}!</h2><p>Todo el equipo de Philly celebra tu vida hoy. Que Dios te bendiga.</p></div></div></section>`:'')+`<div class="turno-top"><div class="me-top">${me.photo?`<img class="meph" src="${assetUrl(me.photo)}" alt="">`:`<span class="meph bg${colorOf(me.id)}" aria-hidden="true">${esc(initials(me.name))}</span>`}<h1>Hola, ${esc(first)}</h1></div><button class="linkb" data-me="">No soy ${esc(first)}</button></div>`;
+  const head=(isBd?`<section class="hbd" style="margin-bottom:16px"><div class="hbd-t"><span class="spark"></span><div><h2>¡Feliz cumpleaños, ${esc(first)}!</h2><p>Todo el equipo de Philly celebra tu vida hoy. Que Dios te bendiga.</p></div></div></section>`:'')+`<div class="turno-top"><div class="me-top">${me.photo?`<img class="meph" src="${assetUrl(me.photo)}" alt="">`:`<span class="meph bg${colorOf(me.id)}" aria-hidden="true">${esc(initials(me.name))}</span>`}<div><span class="gr" aria-hidden="true">ΕΙΡΗΝΗ ΥΜΙΝ</span><h1>Hola, ${esc(first)}</h1></div></div><button class="linkb" data-me="">No soy ${esc(first)}</button></div>`;
   const mgr=MANAGERS.includes(me.id)?`<div class="tmgr"><button class="btn" data-act="newTask">Nueva tarea</button><button class="btn primary" data-act="newService">Nuevo servicio</button></div>`:'';
   if(!mine.length)return `<div class="turno">${head}${mgr}<section class="tcard"><p class="big" style="margin:0">No tienes turnos programados por ahora.</p><p class="small">Cuando te programen, aparecerá aquí.</p></section>${devoPanel()}${myTasksPanel()}${reviewPanel()}${keysPanel()}${reqPanel()}${pwPanel()}${SUPERVISORS.includes(ME)?superPanel():''}${helpLine()}</div>`;
   let si=mine.findIndex(y=>y.id===ui.turnoSel);if(si<0)si=0;
@@ -3263,7 +3266,7 @@ function healPdfs(){for(const sv of S.services)for(const r of (sv.setlist||[])){
 function render(){if(DRAG)return;if(mode!=='live'||!ME_USER){if(mode!=='live'&&mode!=='loading')renderAuth();return}try{syncLogout()}catch(e){}try{healPdfs()}catch(e){console.warn('healPdfs',e)}
   const a=document.activeElement,fid=a&&a.id&&$('#main').contains(a)?a.id:null,sel=fid&&a.selectionStart!=null?[a.selectionStart,a.selectionEnd]:null,val=fid&&a.tagName==='INPUT'&&!a.dataset.tkadd?a.value:null;
   renderNav();
-  document.body.classList.toggle('simple',ui.route==='turno');
+  document.body.classList.toggle('simple',ui.route==='turno');document.body.dataset.route=ui.route;
   const v={turno:vTurno,inicio:vInicio,servicios:vServicios,alabanzas:vAlabanzas,personas:vPersonas,equipos:vEquipos,calendario:vCalendario,tareas:vTareas,devocionales:vDevos}[ui.route]||vInicio;
   $('#main').innerHTML=(mode==='local'&&isEmpty()&&ui.route!=='inicio'&&ui.route!=='turno')?noConn():v();
   if(fid){const el=document.getElementById(fid);if(el){if(val!=null&&el.value!==val)el.value=val;el.focus();if(sel)try{el.setSelectionRange(...sel)}catch(e){}}}
