@@ -1272,9 +1272,12 @@ let CANWRITE=false,LASTERR='',ME_USER=null, LIVE_CHANNEL=null;
 
 function loadLocal(){return;try{const raw=localStorage.getItem('nave.data');if(raw){const d=JSON.parse(raw);COLS.forEach(c=>S[c]=d[c]||[])}}catch(e){}}
 function saveLocal(){return;try{localStorage.setItem('nave.data',JSON.stringify(S))}catch(e){}}
-function writeErr(e){
-  if(e&&e.code==='42501')toast('No tienes permiso para editar.');
-  else toast('No se pudo guardar. Revisa tu conexión e inténtalo de nuevo.');
+function writeErr(e,col){
+  console.warn('Arca no pudo guardar',col,e);
+  const c=(e&&e.code)||'';
+  if(c==='42501')toast('No tienes permiso para editar.');
+  else if(c==='23514'||c==='22P02'||c==='23502')toast(`La base de datos no aceptó “${col||'el registro'}” (código ${c}). Avísale a Ricardo.`);
+  else toast('No se pudo guardar. Revisa tu conexión e inténtalo de nuevo.'+(c?` (código ${c})`:''));
 }
 async function save(col,obj){
   const {id,virtual,...data}=obj; const rid=id||uid();
@@ -1288,7 +1291,7 @@ async function save(col,obj){
     }catch(e){
       LASTERR=(e&&e.code)||'desconocido';
       const j=S[col].findIndex(x=>x.id===rid);if(j>=0){if(prev)S[col][j]=prev;else S[col].splice(j,1)}
-      writeErr(e);return null;
+      writeErr(e,col);return null;
     }
   }else{toast('Inicia sesión para guardar.');return null}
   return rid;
