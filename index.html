@@ -1142,7 +1142,7 @@ async function connectDrive(){
   catch(e){toast('No se pudo iniciar Google Drive: '+e.message+' — revisa /api/drive/diagnose')}}
 function driveReturnNotice(){const q=new URLSearchParams(location.search);if(q.get('drive')!=='connected')return;toast('✓ Google Drive conectado. Los archivos se guardarán en la carpeta Arca.');q.delete('drive');history.replaceState(null,'',location.pathname+(q.toString()?'?'+q:'')+location.hash)}
 /* ---------- constants ---------- */
-const COLS=['people','teams','songs','services','events','projects','tasks','recurring','settings','requests','devos','devoviews','devocomments','setlists','pwresets'];
+const COLS=['people','teams','songs','services','events','projects','tasks','recurring','settings','requests','devos','devoviews','devocomments','setlists','pwresets','eventos'];
 const S={}; COLS.forEach(c=>S[c]=[]);
 const ICON={
   inicio:'<path d="M3 10.5 12 3l9 7.5V20a1 1 0 0 1-1 1h-5v-6H9v6H4a1 1 0 0 1-1-1z"/>',
@@ -1166,7 +1166,7 @@ const VOCES=['Femenina','Masculina','Dueto'];
 const now=new Date();
 const ui={alView:'listas',rolMonth:null,rolPerson:'',route:'inicio',serviceId:null,svcTab:'planes',horizon:14,alRange:'semana',alFilter:'',month:new Date(now.getFullYear(),now.getMonth(),1),taskView:'kanban',fProject:'',fAssignee:'',q:''};
 let mode='loading', ASSETS=null;
-{const h=(location.hash||'').slice(1); if(NAV.some(n=>n[0]===h)) ui.route=h; else {try{if(localStorage.getItem('arca.me'))ui.route='turno'}catch(e){}}}
+{const h=(location.hash||'').slice(1); if(NAV.some(n=>n[0]===h)||h==='evento') ui.route=h; else {try{if(localStorage.getItem('arca.me'))ui.route='turno'}catch(e){}}}
 try{const v=localStorage.getItem('nave.taskView'); if(v) ui.taskView=v;}catch(e){}
 
 /* ---------- helpers ---------- */
@@ -1219,6 +1219,8 @@ function svcsBetween(from,to){const real=S.services.filter(s=>s.date>=from&&s.da
 function svcLookup(id){if(!id)return null;const r=byId('services',id);if(r)return fillLineup(r);
   const m=/^r-(.+)-(\d{4}-\d{2}-\d{2})$/.exec(id);if(!m)return null;const rec=byId('recurring',m[1]);if(!rec)return null;
   return {id,title:rec.title,date:m[2],time:rec.time,recurringId:rec.id,virtual:true,items:[],assignments:lineupFor(rec.id)}}
+/* Evento: funciones de evento.js, sin romper Arca si no carga */
+function evHook(f,...a){try{return typeof window[f]==='function'?window[f](...a):''}catch(e){console.warn('evento',e);return ''}}
 const isUrl=u=>/^https?:\/\/\S+$/i.test(String(u||'').trim());
 const lcSearch=r=>'https://www.google.com/search?q='+encodeURIComponent(['site:acordes.lacuerda.net',r.song,r.artist].filter(Boolean).join(' '));
 const chordSite=u=>/lacuerda\.net/i.test(u||'')?'LaCuerda':/cifraclub/i.test(u||'')?'Cifra Club':'Acordes (link)';
@@ -2003,7 +2005,7 @@ function vTurno(){
   const isBd=bdayMD(me)===TODAY.slice(5);
   const head=(isBd?`<section class="hbd" style="margin-bottom:16px"><div class="hbd-t"><span class="spark"></span><div><h2>¡Feliz cumpleaños, ${esc(first)}!</h2><p>Todo el equipo de Philly celebra tu vida hoy. Que Dios te bendiga.</p></div></div></section>`:'')+`<div class="turno-top"><div class="me-top">${me.photo?`<img class="meph" src="${assetUrl(me.photo)}" alt="">`:`<span class="meph bg${colorOf(me.id)}" aria-hidden="true">${esc(initials(me.name))}</span>`}<div><span class="gr" aria-hidden="true">ΕΙΡΗΝΗ ΥΜΙΝ</span><h1>Hola, ${esc(first)}</h1></div></div><button class="linkb" data-me="">No soy ${esc(first)}</button></div>`;
   const mgr=MANAGERS.includes(me.id)?`<div class="tmgr"><button class="btn" data-act="newTask">Nueva tarea</button><button class="btn primary" data-act="newService">Nuevo servicio</button></div>`:'';
-  if(!mine.length)return `<div class="turno">${head}${mgr}<section class="tcard"><p class="big" style="margin:0">No tienes turnos programados por ahora.</p><p class="small">Cuando te programen, aparecerá aquí.</p></section>${devoPanel()}${myTasksPanel()}${reviewPanel()}${keysPanel()}${reqPanel()}${pwPanel()}${SUPERVISORS.includes(ME)?superPanel():''}${helpLine()}</div>`;
+  if(!mine.length)return `<div class="turno">${head}${evHook('evBanner',true)}${mgr}<section class="tcard"><p class="big" style="margin:0">No tienes turnos programados por ahora.</p><p class="small">Cuando te programen, aparecerá aquí.</p></section>${devoPanel()}${myTasksPanel()}${reviewPanel()}${keysPanel()}${reqPanel()}${pwPanel()}${SUPERVISORS.includes(ME)?superPanel():''}${helpLine()}</div>`;
   let si=mine.findIndex(y=>y.id===ui.turnoSel);if(si<0)si=0;
   const x=mine[si],a=(x.assignments||[]).find(a=>a.personId===ME),lead=(x.assignments||[]).some(v=>v.personId===ME&&isLead(v)),myA=(x.assignments||[]).filter(v=>v.personId===ME),out=myA.every(v=>v.status==='declinado'),pend=!out&&myA.some(v=>v.status!=='confirmado'&&v.status!=='declinado');
   const others=(x.assignments||[]).filter(v=>v.personId&&v.personId!==ME&&v.status!=='declinado').sort((p,q)=>isLead(q)-isLead(p));
@@ -2029,7 +2031,7 @@ function vTurno(){
   const next=mine.filter((y,i)=>i!==si).slice(0,6);
   const sup=SUPERVISORS.includes(ME)?superPanel():'';
   const later=next.length?`<details class="tcard tfold" data-fold="fechas" ${foldAttr('fechas')}><summary><h2 class="th2">Tus próximas fechas</h2><p class="small">${next.length} ${next.length===1?'fecha':'fechas'}</p></summary><ul class="tnext">${next.map(y=>{const b=(y.assignments||[]).find(a=>a.personId===ME);return `<li><button class="linkb tnext-open" data-tsel="${y.id}"><b>${esc(LDOW[parse(y.date).getDay()].replace(/^./,c=>c.toUpperCase()))} ${parse(y.date).getDate()} de ${esc(parse(y.date).toLocaleDateString('es',{month:'long'}))}</b> · ver</button><span>${esc(ampm(y.time))} · ${esc(y.title)}${isLead(b)?' · <strong>diriges</strong>':''}${b.status==='declinado'?' · no vas':b.status!=='confirmado'?' · <em class="pendq">sin confirmar</em>':''}</span>${b.status!=='confirmado'&&b.status!=='declinado'?`<span class="tbtns" style="margin:6px 0 0"><button class="tb sm ok" data-can="${y.id}">Confirmo</button><button class="tb sm warn" data-cant="${y.id}">No puedo</button></span>`:''}</li>`}).join('')}</ul></details>`:'';
-  return `<div class="turno">${head}${CANWRITE===false&&mode==='live'?`<div class="info warn" role="alert" style="margin-bottom:14px"><b>Estás viendo Arca como invitado.</b> Puedes ver todo, pero no confirmar. Suele pasar al abrir el link desde WhatsApp o Gmail: ábrelo en Safari o Chrome con tu sesión de Arca iniciada (o desde la app de Arca), con el correo de tu cuenta de Arca.</div>`:''}${mgr}${svcFold}${devoPanel()}${myTasksPanel()}${reviewPanel()}${keysPanel()}${reqPanel()}${pwPanel()}${sup}${later}${helpLine()}</div>`}
+  return `<div class="turno">${head}${evHook('evBanner',true)}${CANWRITE===false&&mode==='live'?`<div class="info warn" role="alert" style="margin-bottom:14px"><b>Estás viendo Arca como invitado.</b> Puedes ver todo, pero no confirmar. Suele pasar al abrir el link desde WhatsApp o Gmail: ábrelo en Safari o Chrome con tu sesión de Arca iniciada (o desde la app de Arca), con el correo de tu cuenta de Arca.</div>`:''}${mgr}${svcFold}${devoPanel()}${myTasksPanel()}${reviewPanel()}${keysPanel()}${reqPanel()}${pwPanel()}${sup}${later}${helpLine()}</div>`}
 function helpLine(){const lite=document.documentElement.classList.contains('lite');return `<p class="small center"><button class="linkb" data-lite aria-pressed="${lite}">Modo ligero: ${lite?'encendido':'apagado'}</button> · <button class="linkb" data-tourstart>¿Cómo se usa Arca?</button> · <button class="linkb" data-go="inicio">Ir a la app completa</button> · <button class="linkb" data-mypw>Cambiar mi contraseña</button> · <button class="linkb" data-logout>Cerrar sesión</button></p>`}
 async function setMyStatus(sid,st){const svc=svcLookup(sid);if(!svc)return;
   const list=(svc.assignments||[]).map(a=>a.personId===ME?{...a,status:st}:a);
@@ -2381,7 +2383,7 @@ function vInicio(){
   const bdayPanel=(monthB.length||nextOnes.length)?`<section class="panel"><div class="panel-h"><h2>${monthB.length?'Cumpleañeros de '+esc(monthName):'Próximos cumpleaños'}</h2><span class="muted" style="font-size:.84rem">${monthB.length?monthB.length+(monthB.length===1?' persona':' personas'):'Nadie cumple este mes'}</span></div><ul class="list">${monthB.length?monthB.map(p=>bRow(p)).join(''):nextOnes.map(x=>bRow(x.p,x.d)).join('')}</ul></section>`:'';
   const hbd=todayB.length?`<section class="hbd"><div class="hbd-t"><span class="spark"></span><div><h2>¡Feliz cumpleaños, ${esc(todayB.map(p=>p.name.split(/\s+/)[0]).join(' y '))}!</h2><p>Hoy celebramos ${todayB.length>1?'su vida':'tu vida'}. Que Dios ${todayB.length>1?'los':'te'} bendiga en este nuevo año.</p></div></div><div class="row">${todayB.map(p=>waBtn(p)).join('')}</div></section>`:'';
   const tourHint=(()=>{let d=false;try{d=localStorage.getItem('arca.tourHint')==='1'}catch(_){}return !d&&ME&&!tourSeenV()?`<section class="tourhint"><div><b>¿Nuevo en Arca?</b><span>Mira el tour de 1 minuto y aprende dónde está cada cosa.</span></div><button class="btn primary sm" data-tourstart>Ver el tour</button><button class="icon-btn" data-tourhintx aria-label="Cerrar">✕</button></section>`:''})();
-  return tourHint+head+hbd+strip+`<div class="grid2"><div class="stack">${svcPanel}${taskPanel}</div><div class="stack">${bdayPanel}${projPanel}</div></div>${socialPanel()}<p class="small center" style="margin-top:18px"><button class="btn" data-tourstart>¿Cómo se usa Arca? · Ver el tour</button></p>`;
+  return tourHint+head+evHook('evBanner',false)+hbd+strip+`<div class="grid2"><div class="stack">${svcPanel}${taskPanel}</div><div class="stack">${bdayPanel}${projPanel}</div></div>${socialPanel()}<p class="small center" style="margin-top:18px"><button class="btn" data-tourstart>¿Cómo se usa Arca? · Ver el tour</button></p>`;
 }
 
 function vServicios(){
@@ -3278,7 +3280,7 @@ function render(){if(DRAG)return;if(mode!=='live'||!ME_USER){if(mode!=='live'&&m
   const a=document.activeElement,fid=a&&a.id&&$('#main').contains(a)?a.id:null,sel=fid&&a.selectionStart!=null?[a.selectionStart,a.selectionEnd]:null,val=fid&&a.tagName==='INPUT'&&!a.dataset.tkadd?a.value:null;
   renderNav();
   document.body.classList.toggle('simple',ui.route==='turno');document.body.dataset.route=ui.route;
-  const v={turno:vTurno,inicio:vInicio,servicios:vServicios,alabanzas:vAlabanzas,personas:vPersonas,equipos:vEquipos,calendario:vCalendario,tareas:vTareas,devocionales:vDevos}[ui.route]||vInicio;
+  const v={turno:vTurno,inicio:vInicio,servicios:vServicios,alabanzas:vAlabanzas,personas:vPersonas,equipos:vEquipos,calendario:vCalendario,tareas:vTareas,devocionales:vDevos,evento:()=>evHook('vEvento')}[ui.route]||vInicio;
   $('#main').innerHTML=(mode==='local'&&isEmpty()&&ui.route!=='inicio'&&ui.route!=='turno')?noConn():v();
   if(fid){const el=document.getElementById(fid);if(el){if(val!=null&&el.value!==val)el.value=val;el.focus();if(sel)try{el.setSelectionRange(...sel)}catch(e){}}}
   if(ui.focusId){const el=document.getElementById(ui.focusId);ui.focusId=null;if(el)el.focus()}
@@ -3482,4 +3484,5 @@ function bindDnD(){
 init();
 </script>
 
+<script src="/evento.js"></script>
 </body></html>
