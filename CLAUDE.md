@@ -8,7 +8,7 @@ La usa el equipo de Philly; la administra Ricardo Vega (ricardovegaprod@gmail.co
 
 ## 2. Dónde vive
 - **Repositorio:** github.com/ricardiaz97-hub/ARCA (rama `main`).
-- **Publicación:** Vercel, despliega solo al hacer merge a `main`. (URL de producción: confirmar con Ricardo.)
+- **Publicación:** Vercel, despliega solo al hacer merge a `main`. URL de producción: https://arca-tau-steel.vercel.app
 - **Datos:** Supabase, tabla `arca_records` (`collection`, `id`, `data`), con realtime. Login con Supabase Auth.
 - **Archivos:** Google Drive, carpeta "Arca" (PDFs, fotos, arte); se sirven vía `/api/drive/file?id=`.
 - **Origen:** empezó como artifact de claude.ai (Nua9H73D47jHEw4umWHtcZ) y pasó a app propia.
