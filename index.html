@@ -2491,7 +2491,7 @@ function assetErr(e){const c=e&&e.code;
   else if(c==='unsupported_type')toast('Solo se aceptan PDF, JPG o PNG.');
   else if(c==='quota_or_state')toast('Se llenó el espacio de archivos de la app. Quita PDFs viejos.');
   else if(c==='not_granted'||c==='capability_disabled')toast('No tienes permiso para subir archivos aquí.');
-  else if(c==='upload_failed'&&/invalid_grant|caduc/i.test(e.message||'')){DRIVE_CONNECTED=false;toast('El permiso de Google Drive caducó. Pulsa “Conectar Google Drive” (arriba) y vuelve a subir el PDF.')}
+  else if(c==='upload_failed'&&/invalid_grant|caduc|expired|revoked/i.test(e.message||'')){DRIVE_CONNECTED=false;toast('El permiso de Google Drive caducó. Pulsa “Conectar Google Drive” (arriba) y vuelve a subir el PDF.')}
   else if(c==='upload_failed'||c==='drive_not_connected')toast('No se pudo subir: '+String(e.message||'error de Drive').slice(0,160));
   else toast('No se pudo subir el archivo. Inténtalo de nuevo.'+(e&&e.message?' ('+String(e.message).slice(0,80)+')':''))}
 async function uploadRowPdf(sid,rid,file){if(!ASSETS||!file)return;
