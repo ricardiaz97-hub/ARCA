@@ -102,7 +102,7 @@ function vEvento(){const ev=byId(EV_COL,ui.eventoId)||evActive();
   const dress=`<section class="panel evdress" id="evDress"><div class="panel-h"><h2>Código de vestimenta</h2>${ME&&evHasDress(ev)?(me.dressOk?'<span class="pill st-confirmado">✓ Visto</span>':'<button class="btn primary sm" data-evx="dressok">Entendido</button>'):''}</div>
     ${!evHasDress(ev)?`<div class="empty"><b>Muy pronto</b>Aquí verás las paletas de colores y las referencias de Pinterest para vestirnos el día del evento.</div>`:`
     ${ev.dress?`<p class="evp">${esc(ev.dress)}</p>`:''}
-    ${looks.length?`<div class="evlooks">${looks.map((u,i)=>`<a href="${esc(evImg(u))}" target="_blank" rel="noopener" class="evlook"><img src="${esc(evImg(u))}" alt="Referencia de vestimenta ${i+1}" loading="lazy"></a>`).join('')}</div>`:''}
+    ${looks.length?`<div class="evlooks">${looks.map((u,i)=>`<a href="${esc(evImg(u))}" target="_blank" rel="noopener" data-raw class="evlook"><img src="${esc(evImg(u))}" alt="Referencia de vestimenta ${i+1}" loading="lazy"></a>`).join('')}</div>`:''}
     ${pal.length?`<div class="evpal">${pal.map(p=>`<div class="evpal-c"><span class="small">${esc(p.name||'Paleta')}</span><div class="evpal-s">${(p.colors||[]).map(c=>`<button class="evsw" style="--c:${esc(c)}" data-evcopy="${esc(c)}" title="Copiar ${esc(c)}" aria-label="Color ${esc(c)}, tocar para copiar"><span>${esc(c)}</span></button>`).join('')}</div></div>`).join('')}</div>`:''}
     ${pins.length?`<div class="row evpins">${pins.map(p=>`<a class="btn ghost sm" href="${esc(p.url)}" target="_blank" rel="noopener">${esc(p.label||'Ver en Pinterest')} ↗</a>`).join('')}</div>`:''}`}</section>`;
 
