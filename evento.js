@@ -170,7 +170,7 @@ function evEdit(ev){ev=ev||{...EV_PRESET};
       const doc={...ev,kind:'event',title:v.title,kicker:v.kicker,tagline:v.tagline,date:v.date,time:v.time,place:v.place,greek:v.greek,svcId:v.svcId,art:v.art,about:v.about,
         calls:evLines(v.calls).map(l=>{const c=evCells(l);return {t:c[0]||'',what:c.slice(1).join(' | ')}}).filter(c=>c.what),
         rehearsals:sortBy(evLines(v.rehearsals).map(l=>{const c=evCells(l);return {date:c[0]||'',time:c[1]||'',place:c[2]||'',note:c[3]||''}}).filter(r=>/^\d{4}-\d{2}-\d{2}$/.test(r.date)),r=>r.date+r.time),
-        rehearseNote:v.rehearseNote,dress:v.dress,looks:evLines(v.looks).filter(x=>isUrl(x)||/^drive:|^[\w-]{10,}$/.test(x)),palettes:pal,pins,
+        rehearseNote:v.rehearseNote,dress:v.dress,looks:evLines(v.looks).filter(x=>isUrl(x)||/^gdrv:|^drive:|^[\w-]{10,}$/.test(x)),palettes:pal,pins,
         shirt:{...sh,name:v.shName,price:v.shPrice===''?'':Number(v.shPrice),note:v.shNote,desc:v.shDesc,sizes:v.shSizes.split(',').map(x=>x.trim()).filter(Boolean)},
         link:v.link,active:v.active!=='no',updatedAt:new Date().toISOString()};
       const id=await save(EV_COL,doc);if(id){ui.eventoId=id;toast('Listo: evento guardado.')}},
