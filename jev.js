@@ -212,7 +212,7 @@ function vJevTu(){
     <section class="panel empty"><b>Tu perfil aún no está vinculado</b><p class="muted">Pídele a un líder que agregue tu correo en Equipo. Arca te reconoce automáticamente al iniciar sesión.</p></section>`;
   const mine=jevUpcoming().filter(a=>(a.crew||[]).includes(ME)||(a.going||[]).includes(ME));
   const myIdeas=jevIdeasAll().filter(i=>i.authorId===ME).sort((x,y)=>String(y.createdAt||'').localeCompare(String(x.createdAt||'')));
-  return `<div class="head"><div><span class="gr" aria-hidden="true">ΝΕΑΝΙΣΚΟΙ</span><h1>Hola, ${esc(jevFirst(ME))}</h1><p>Lo tuyo en JEV+.</p></div><div class="row"><button class="btn primary" data-jev="newidea">Mandar una idea</button></div></div>
+  return `<div class="head"><div class="jv-me-top"><label class="jv-myph" title="Cambiar mi foto de JEV+">${p.photo?`<img src="${assetUrl(p.photo)}" alt="Tu foto">`:`<span class="bg${colorOf(p.id)}">${esc(initials(p.name))}</span>`}<i aria-hidden="true">Cambiar</i><input type="file" id="jvPhoto" accept="image/png,image/jpeg,image/webp" hidden></label><div><span class="gr" aria-hidden="true">ΝΕΑΝΙΣΚΟΙ</span><h1>Hola, ${esc(jevFirst(ME))}</h1><p>Lo tuyo en JEV+. Tu foto aquí puede ser distinta a la de Philly.</p></div></div><div class="row"><button class="btn primary" data-jev="newidea">Mandar una idea</button></div></div>
     <section class="panel"><div class="panel-h"><h2>Mis próximas actividades</h2></div>
       ${mine.length?`<div class="jv-stack tight">${mine.slice(0,5).map(a=>jevActCard(a)).join('')}</div>`:`<div class="empty" style="padding:18px"><p class="muted" style="margin:0">Nada por ahora. Mira las <a href="#actividades" data-go="actividades">actividades</a> y toca “Voy a ir”.</p></div>`}</section>
     <section class="panel"><div class="panel-h"><h2>Mis ideas de videos</h2></div>
@@ -251,6 +251,16 @@ async function jevImportPhilly(){
 }
 
 /* ---------- Eventos de JEV+ ---------- */
+/* Foto propia de JEV+: se guarda solo en el registro de este espacio (la de Philly no cambia). */
+document.addEventListener('change',async e=>{
+  if(e.target.id!=='jvPhoto'||SPACE!=='jev')return;
+  const f=e.target.files&&e.target.files[0];e.target.value='';if(!f)return;
+  const p=ME&&byId('people',ME);if(!p)return;
+  if(!ASSETS){toast('Para subir fotos, un administrador debe conectar Google Drive.');return}
+  try{toast('Subiendo tu foto…');const blob=await squarePng(f,360);const res=await ASSETS.upload(blob,{type:'image/png'});
+    await save('people',{...p,photo:res.id});toast('Listo, ya tienes foto nueva en JEV+.');render();renderNav()}
+  catch(err){typeof assetErr==='function'?assetErr(err):toast('No pude subir la foto.')}
+});
 document.addEventListener('click',e=>{
   const b=e.target.closest&&e.target.closest('[data-jev]');if(!b||SPACE!=='jev')return;
   e.preventDefault();e.stopPropagation();
