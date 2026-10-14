@@ -14,7 +14,7 @@
 - Funciones de Vercel en `api/` (`api/auth/` contraseñas, `api/drive/` archivos) y utilidades en `lib/`.
 - Cada colección de datos vive en `S[coleccion]`; `save(col, obj)` y `remove(col, id)` escriben a Supabase con el espacio activo. Hay conexión en vivo (realtime) filtrada por espacio.
 - Colecciones: `people, teams, songs, services, events, projects, tasks, recurring, settings, requests, devos, devoviews, devocomments, setlists, pwresets, eventos, jevacts, jevideas`.
-- Archivos SQL: `spaces.sql` (espacios y permisos), `spaces-rollback.sql` (deshacer), `drive-setup.sql`, `lock-down.sql` (solo para antes de los espacios).
+- Archivos SQL: `jev-colecciones.sql` (quita la lista de colecciones permitidas de la tabla original; sin esto JEV+ no guarda actividades ni ideas, error 23514), `spaces.sql` (espacios y permisos), `spaces-rollback.sql` (deshacer), `drive-setup.sql`, `lock-down.sql` (solo para antes de los espacios).
 
 **4. Decisiones ya tomadas.**
 - Diseño Vidrio estelar: Philly naranja y negro; **JEV+ verde neón (#39FF88) y azul (#2F7BFF)**. El tema se cambia con `<html data-space="jev">` y las variables `--acc…`; no se copian estilos.
