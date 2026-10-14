@@ -21,6 +21,7 @@
 - **Un solo Arca con espacios por grupo**, no dos aplicaciones. Cada registro tiene `space` (`philly` por defecto) y la llave primaria es `(space, collection, id)`.
 - **Acceso por correo** en `arca_members(space, email, role)`. Quien tiene filas entra solo a esos espacios. Quien no tiene ninguna fila (todo Philly hoy) sigue entrando a `philly`. Solo los admin de un espacio cambian sus membresías.
 - Quien se agrega a JEV+ desde Equipo recibe su membresía solo en JEV+. Para que además siga en Philly hay que elegir “JEV+ y Philly” en su perfil; si no, pierde Philly (así se aísla a los jóvenes).
+- **Personas que están en Philly y en JEV+:** cada espacio guarda su propio registro (así los líderes de JEV+ no ven notas ni datos de Philly). Para no escribirlos otra vez, en JEV+ → Equipo hay un botón **Traer de Philly** (solo admin): copia nombre, correo, teléfono, cumpleaños y foto, guarda `fromPhilly` con el id original y les deja acceso a los dos espacios. Los títulos y equipos son de cada espacio. Los datos copiados no se sincronizan solos: si alguien cambia de teléfono, se edita en cada espacio.
 - En Philly, los administradores siguen siendo los ids fijos `APPROVERS` y `MANAGERS_PHILLY` de `index.html`. En otros espacios, admin = rol `admin` en `arca_members`, y líder = título con “Líder”, “Pastor” o “admin”.
 - Si la base aún no tiene `spaces.sql`, la app funciona como antes (modo anterior). Cualquier otro error al leer membresías se muestra, no se oculta.
 - Todo en español y sin tecnicismos para los usuarios.
@@ -36,7 +37,8 @@
 3. Logo de JEV+ (hoy es un texto provisional hecho con la tipografía de la app) e icono de instalación propio.
 4. Formulario de Google para que se unan solos a JEV+ (hoy los agrega un líder en Equipo).
 5. Quitar el acceso heredado a Philly: dar una fila de `arca_members` a cada persona de Philly y cambiar la regla de `arca_can_access`, para que una cuenta nueva sin membresía no vea nada.
-6. Contraseñas olvidadas de JEV+: hoy las solicitudes llegan a Ricardo y Andrés (espacio Philly).
+6. Sincronizar datos de contacto entre Philly y JEV+ para quien está en ambos (hoy se copian una vez con “Traer de Philly”).
+7. Contraseñas olvidadas de JEV+: hoy las solicitudes llegan a Ricardo y Andrés (espacio Philly).
 
 **7. Problemas conocidos y cómo se resolvieron.**
 - **No volver a correr `lock-down.sql` después de `spaces.sql`:** crea una política que da acceso a todos los espacios. Ya se protegió para que no haga nada si existe `arca_members`.

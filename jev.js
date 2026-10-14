@@ -220,11 +220,42 @@ function vJevTu(){
     <p class="small center" style="margin-top:18px"><button class="linkb" data-person="${esc(ME)}">Ver mi perfil</button></p>`;
 }
 
+/* ---------- Traer personas de Philly (sin escribir sus datos otra vez) ---------- */
+/* Copia nombre, correo, teléfono, cumpleaños y foto. Los títulos y equipos de cada espacio son independientes.
+   Guarda `fromPhilly` para no traerlas dos veces y les deja acceso a Philly y a JEV+. */
+async function jevImportPhilly(){
+  if(!ADMIN())return;
+  toast('Buscando a las personas de Philly…');
+  const {data,error}=await SB.from('arca_records').select('id,data').eq('space','philly').eq('collection','people');
+  if(error||!data){toast('No pude leer a las personas de Philly'+(error?.code?' ('+error.code+')':'')+'.');return}
+  const have=new Set(S.people.flatMap(p=>[p.fromPhilly,p.email&&norm(p.email)].filter(Boolean)));
+  const names=new Set(S.people.map(p=>norm(p.name)));
+  const list=data.filter(r=>r.data&&r.data.name&&r.data.status!=='inactivo'&&!have.has(r.id)&&!(r.data.email&&have.has(norm(r.data.email)))&&!names.has(norm(r.data.name)))
+    .sort((a,b)=>String(a.data.name).localeCompare(String(b.data.name),'es'));
+  if(!list.length){toast('Ya están en JEV+ todas las personas de Philly.');return}
+  openForm({title:'Traer de Philly',saveLabel:'Traer a JEV+',
+    intro:'<div class="info gold"><b>No hace falta escribirlos otra vez</b><span>Se copian nombre, correo, teléfono, cumpleaños y foto. Los títulos y equipos de JEV+ los pones tú. Seguirán entrando a Philly y también a JEV+.</span></div>',
+    fields:[{id:'ids',label:'¿A quiénes traes?',type:'multi',value:[],options:list.map(r=>[r.id,r.data.name+(r.data.email?'':' (sin correo)')]),none:'No hay personas.'}],
+    onSave:async v=>{
+      const pick=list.filter(r=>(v.ids||[]).includes(r.id));if(!pick.length)return;
+      const rows=[];let n=0;
+      for(const r of pick){const d=r.data;
+        const id=await save('people',{name:d.name,email:d.email||'',phone:d.phone||'',birth:d.birth||'',photo:d.photo||'',status:'activo',titles:[],teamIds:[],notes:'',fromPhilly:r.id});
+        if(!id)continue;n++;
+        if(validEmail(d.email)){const em=norm(d.email).trim();rows.push({space:SPACE,email:em,role:'member'},{space:'philly',email:em,role:'member'})}}
+      if(rows.length&&SPACES_OK){
+        let e=(await SB.from('arca_members').upsert(rows,{onConflict:'space,email',ignoreDuplicates:true})).error;
+        if(e)e=(await SB.from('arca_members').upsert(rows.filter(x=>x.space===SPACE),{onConflict:'space,email',ignoreDuplicates:true})).error;
+        if(e)toast('Traje a '+n+', pero no pude darles acceso ('+(e.code||'error')+'). Avísale a Ricardo.');}
+      if(n)toast('Listo: '+n+(n===1?' persona ya está':' personas ya están')+' en JEV+.')}});
+}
+
 /* ---------- Eventos de JEV+ ---------- */
 document.addEventListener('click',e=>{
   const b=e.target.closest&&e.target.closest('[data-jev]');if(!b||SPACE!=='jev')return;
   e.preventDefault();e.stopPropagation();
   const id=b.dataset.id,k=b.dataset.jev;
+  if(k==='import')return jevImportPhilly();
   if(k==='newact'){if(jevMgr())jevEditAct();return}
   if(k==='editact'){const a=byId('jevacts',id);if(a&&jevMgr())jevEditAct(a);return}
   if(k==='go')return jevToggleGo(id);
