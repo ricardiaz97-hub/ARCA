@@ -1,0 +1,156 @@
+/* =====================================================================
+   JEV+ · Jóvenes En Victoria  —  verde neón y azul
+   Se carga DESPUÉS de estelar.css. Solo actúa cuando <html data-space="jev">;
+   en Philly este archivo no cambia nada.
+   Reutiliza las variables del Vidrio estelar (--acc…) con otros colores.
+   ===================================================================== */
+
+/* ---------- Selector de espacio (aparece solo si perteneces a más de uno) ---------- */
+.spsw{display:flex;gap:2px;padding:3px;margin:0 0 10px;border:1px solid var(--line-strong);background:rgba(255,255,255,.04)}
+.spsw button{flex:1;font-family:var(--f-display,inherit);font-weight:700;font-size:.78rem;letter-spacing:.1em;text-transform:uppercase;
+  padding:7px 8px;border:0;background:transparent;color:var(--muted);cursor:pointer;transition:background-color 140ms ease,color 140ms ease}
+.spsw button:hover{color:var(--fg)}
+.spsw button[aria-pressed="true"]{background:var(--acc);color:#04120A}
+/* En el celular el menú va abajo: el selector sube a la barra de arriba */
+.mbar .spsw{display:none}
+@media (max-width:760px){
+  .rail .spsw{display:none}
+  .mbar .spsw{display:flex;margin:0 0 0 auto}
+  .spsw button{padding:6px 10px;font-size:.72rem}
+  html[data-space="jev"] .rail{grid-template-columns:repeat(6,minmax(0,1fr))!important}
+}
+
+/* ---------- Tema verde neón y azul ---------- */
+:root[data-space="jev"]:not(#estelar){
+  --acc:#39FF88; --acc-hi:#A6FFCB; --acc-deep:#00D96B; --acc-glow:rgba(57,255,136,.5);
+  --blue:#2F7BFF; --blue-hi:#8DB6FF; --blue-glow:rgba(47,123,255,.55);
+  --bg:#04070F;
+  --line:rgba(190,215,255,.14); --line-strong:rgba(190,215,255,.30);
+  --glass-line:rgba(170,205,255,.30); --glass-hi:rgba(200,225,255,.45);
+  --fg:#EAF3FF; --muted:#A5B8D2; --faint:#8196B2;
+  --rail:rgba(5,9,18,.76); --rail-fg:#EAF3FF; --rail-muted:#8FA4C0; --rail-line:rgba(190,215,255,.14);
+  --primary-fg:#04120A;
+  --ink2:#8DB6FF; --ink2-soft:rgba(47,123,255,.2);
+  --c0:#6FA5FF; --c1:#39FF88; --c2:#B79BFF; --c3:#5CE1FF; --c4:#FF8FB1; --c5:#D4F56A;
+}
+/* en JEV+ todas las pestañas conservan el verde (Alabanzas y Devocionales no cambian de color) */
+body[data-space="jev"],body[data-space="jev"][data-route]{--acc:#39FF88;--acc-hi:#A6FFCB;--acc-deep:#00D96B;--acc-glow:rgba(57,255,136,.5)}
+html[data-space="jev"]{background:#04070F}
+html[data-space="jev"] ::selection{background:var(--acc);color:#04120A}
+
+/* Cielo: azul eléctrico arriba, verde neón al costado */
+html[data-space="jev"] .sky{background:
+    radial-gradient(55% 35% at 85% 6%,rgba(47,123,255,.55),transparent 70%),
+    radial-gradient(60% 40% at 0% 55%,rgba(57,255,136,.20),transparent 72%),
+    radial-gradient(70% 40% at 60% 105%,rgba(47,123,255,.24),transparent 70%),
+    linear-gradient(180deg,#07101F,#03060C)}
+html[data-space="jev"] .sky .ring{border-color:rgba(57,255,136,.30);box-shadow:0 0 0 28px rgba(255,255,255,.012),0 0 0 29px rgba(47,123,255,.18)}
+
+/* Colores fijos del tema naranja que aquí cambian */
+html[data-space="jev"] .role.lead{background:linear-gradient(90deg,#D9FFE8,var(--acc-hi));color:#04120A}
+html[data-space="jev"] .sparks i.on,html[data-space="jev"] .pjbar i,html[data-space="jev"] .evm-l li.ok .evm-k{background:linear-gradient(180deg,#E6FFF0,var(--acc-hi) 45%,var(--acc))}
+html[data-space="jev"] .nbadge{color:#04120A;box-shadow:0 0 0 2px #04070F,0 0 10px var(--acc-glow)}
+html[data-space="jev"] .btn.primary,html[data-space="jev"] .tb.ok,html[data-space="jev"] .tbig{color:#04120A}
+html[data-space="jev"] .btn.primary:hover,html[data-space="jev"] .tb.ok:hover{color:#04120A}
+html[data-space="jev"] .drawer,html[data-space="jev"] .wz,html[data-space="jev"] .pal{background:linear-gradient(160deg,rgba(14,22,40,.94),rgba(5,8,16,.96))}
+html[data-space="jev"] .tcol,html[data-space="jev"] .tcol-m{background:#050A14}
+
+/* ---------- Logo (texto, para que use la tipografía de la app) ---------- */
+.jevlogo{display:flex;flex-direction:column;gap:2px;line-height:1}
+.jevlogo b{font-family:var(--f-display,inherit);font-weight:700;font-size:2.35rem;letter-spacing:.02em;color:#fff;text-shadow:0 0 18px var(--acc-glow)}
+.jevlogo b i{font-style:normal;color:var(--acc);text-shadow:0 0 14px var(--acc),0 0 30px var(--acc-glow);margin-left:1px}
+.jevlogo span{font-family:var(--f-display,inherit);font-weight:600;font-size:.62rem;letter-spacing:.24em;text-transform:uppercase;color:var(--blue-hi)}
+.jevlogo.sm{flex-direction:row;align-items:center}
+.jevlogo.sm b{font-size:1.45rem}
+.rail .brand .jevlogo{padding:6px 4px 2px}
+
+/* ---------- Tarjetas de actividades e ideas ---------- */
+.jv-chips{display:flex;flex-wrap:wrap;gap:6px;margin:0 0 16px}
+.jv-chips .chip{border:1px solid var(--line);cursor:pointer;font:inherit;font-size:.82rem;padding:6px 12px;background:rgba(255,255,255,.05);color:var(--muted);transition:background-color 140ms ease,color 140ms ease,border-color 140ms ease}
+.jv-chips .chip:hover{color:var(--fg);border-color:var(--line-strong)}
+.jv-chips .chip.on{background:var(--acc);color:#04120A;border-color:var(--acc);font-weight:700}
+
+.jv-stack{display:grid;gap:12px}
+.jv-stack.tight{gap:0}
+.jv-stack.tight .jv-act,.jv-stack.tight .jv-idea{box-shadow:none;border-top:1px solid var(--line);background:none}
+.jv-stack.tight>:first-child{border-top:0}
+
+.jv-act,.jv-idea{position:relative;display:flex;gap:16px;padding:16px;background:var(--glass);
+  -webkit-backdrop-filter:blur(18px) saturate(150%);backdrop-filter:blur(18px) saturate(150%);
+  box-shadow:inset 0 0 0 1px var(--glass-line),inset 0 1px 0 var(--glass-hi);
+  clip-path:polygon(0 0,calc(100% - 14px) 0,100% 14px,100% 100%,14px 100%,0 calc(100% - 14px))}
+.jv-act.past{opacity:.72}
+.jv-body{min-width:0;flex:1}
+.jv-body h3{margin:4px 0 2px;font-family:var(--f-display,inherit);font-size:1.15rem;letter-spacing:.03em;text-wrap:balance;overflow-wrap:anywhere}
+.jv-sub{margin:0;color:var(--muted);font-size:.9rem}
+.jv-notes{margin:8px 0 0;color:var(--fg);opacity:.9;font-size:.92rem;white-space:pre-line;overflow-wrap:anywhere}
+.jv-meta{display:flex;flex-wrap:wrap;align-items:center;gap:8px}
+.jv-kind,.jv-when,.jv-me,.jv-state{font-family:var(--f-display,inherit);font-weight:700;font-size:.68rem;letter-spacing:.14em;text-transform:uppercase;padding:3px 8px}
+.jv-kind{background:rgba(47,123,255,.22);color:var(--blue-hi);box-shadow:inset 0 0 0 1px rgba(47,123,255,.5)}
+.jv-when{background:var(--acc);color:#04120A}
+.jv-me{background:transparent;color:var(--acc-hi);box-shadow:inset 0 0 0 1px var(--acc)}
+.jv-foot{display:flex;flex-wrap:wrap;align-items:center;gap:8px;margin-top:12px}
+.jv-link{display:inline-block;margin-top:8px;color:var(--blue-hi);font-size:.9rem;text-underline-offset:3px}
+.jv-lnote{margin:10px 0 0;padding:8px 10px;background:rgba(57,255,136,.07);box-shadow:inset 3px 0 0 var(--acc);font-size:.9rem}
+.jv-lnote .lbl{display:block;margin-bottom:2px}
+
+.jv-date{flex:none;width:58px;align-self:flex-start;display:flex;flex-direction:column;align-items:center;justify-content:center;padding:8px 0;text-align:center;
+  background:linear-gradient(180deg,rgba(47,123,255,.28),rgba(47,123,255,.08));box-shadow:inset 0 0 0 1px rgba(47,123,255,.55);font-family:var(--f-display,inherit)}
+.jv-date b{font-size:1.7rem;line-height:1;color:#fff}
+.jv-date small{font-size:.66rem;letter-spacing:.14em;text-transform:uppercase;color:var(--blue-hi)}
+.jv-act.k-culto .jv-date{background:linear-gradient(180deg,rgba(57,255,136,.28),rgba(57,255,136,.07));box-shadow:inset 0 0 0 1px rgba(57,255,136,.6)}
+.jv-act.k-culto .jv-date small{color:var(--acc-hi)}
+
+.jv-crew{display:flex;flex-wrap:wrap;align-items:center;gap:8px;margin-top:10px}
+.jv-faces{display:inline-flex}
+.jv-face{width:28px;height:28px;border-radius:50%;object-fit:cover;display:inline-grid;place-items:center;font-size:.68rem;font-weight:700;color:#04120A;margin-left:-6px;box-shadow:0 0 0 2px #060b16}
+.jv-faces .jv-face:first-child{margin-left:0}
+.jv-names{font-size:.85rem;color:var(--muted)}
+
+.jv-idea{align-items:flex-start}
+.jv-vote{flex:none;width:52px;display:flex;flex-direction:column;align-items:center;gap:2px;padding:8px 0;cursor:pointer;font:inherit;color:var(--muted);
+  background:rgba(255,255,255,.05);border:0;box-shadow:inset 0 0 0 1px var(--line-strong);transition:background-color 140ms ease,color 140ms ease,transform 120ms ease}
+.jv-vote:hover:not(:disabled){color:var(--fg);box-shadow:inset 0 0 0 1px var(--acc)}
+.jv-vote:active:not(:disabled){transform:scale(.96)}
+.jv-vote:disabled{opacity:.5;cursor:not-allowed}
+.jv-vote b{font-family:var(--f-display,inherit);font-size:1.2rem;color:var(--fg)}
+.jv-vote.on{background:var(--acc);color:#04120A;box-shadow:0 0 16px var(--acc-glow)}
+.jv-vote.on b{color:#04120A}
+.jv-state.s-nueva{background:rgba(255,255,255,.1);color:var(--fg)}
+.jv-state.s-aprobada{background:rgba(47,123,255,.25);color:var(--blue-hi);box-shadow:inset 0 0 0 1px rgba(47,123,255,.55)}
+.jv-state.s-produccion{background:rgba(255,200,92,.16);color:#FFD58A;box-shadow:inset 0 0 0 1px rgba(255,200,92,.45)}
+.jv-state.s-publicada{background:var(--acc);color:#04120A}
+.jv-state.s-descartada{background:rgba(255,255,255,.06);color:var(--faint)}
+.jv-idea.st-descartada{opacity:.6}
+
+/* ---------- Inicio ---------- */
+.jv-hero{position:relative;margin:0 0 16px;padding:2px;background:linear-gradient(120deg,var(--acc),var(--blue));
+  clip-path:polygon(0 0,calc(100% - 20px) 0,100% 20px,100% 100%,20px 100%,0 calc(100% - 20px))}
+.jv-hero-in{padding:22px 22px 20px;background:radial-gradient(120% 140% at 85% 20%,rgba(47,123,255,.55) 0%,#08142B 45%,#050A14 100%);
+  clip-path:polygon(0 0,calc(100% - 19px) 0,100% 19px,100% 100%,19px 100%,0 calc(100% - 19px))}
+.jv-tag{display:inline-block;font-family:var(--f-display,inherit);font-weight:700;font-size:.7rem;letter-spacing:.18em;text-transform:uppercase;color:#04120A;background:var(--acc);padding:4px 10px}
+.jv-hero h2{margin:10px 0 4px;font-size:clamp(1.8rem,5.5vw,3rem);line-height:1;letter-spacing:.02em;color:#fff;text-shadow:0 0 22px var(--blue-glow)}
+.jv-hero-when{margin:0 0 14px;font-family:var(--f-display,inherit);font-weight:600;letter-spacing:.1em;text-transform:uppercase;color:var(--acc-hi)}
+.jv-stats{display:grid;grid-template-columns:repeat(4,1fr);gap:10px;margin:0 0 16px}
+.jv-stats>div{padding:12px 10px;text-align:center;background:var(--glass);box-shadow:inset 0 0 0 1px var(--glass-line)}
+.jv-stats b{display:block;font-family:var(--f-display,inherit);font-size:1.8rem;line-height:1;color:var(--acc)}
+.jv-stats span{display:block;margin-top:4px;font-size:.74rem;color:var(--muted);line-height:1.25}
+.jv-mini-d{flex:none;width:44px;text-align:center;font-family:var(--f-display,inherit);line-height:1;padding:6px 0;background:rgba(47,123,255,.2);box-shadow:inset 0 0 0 1px rgba(47,123,255,.5)}
+.jv-mini-d b{display:block;font-size:1.25rem;color:#fff}
+.jv-mini-d small{font-size:.6rem;letter-spacing:.12em;text-transform:uppercase;color:var(--blue-hi)}
+
+@media (max-width:560px){
+  .jv-stats{grid-template-columns:repeat(2,1fr)}
+  .jv-act,.jv-idea{padding:14px 12px;gap:12px}
+  .jv-date{width:50px}
+  .jv-hero-in{padding:18px 16px}
+}
+@media (prefers-reduced-motion:reduce){.jv-vote,.jv-chips .chip,.spsw button{transition:none}}
+
+/* ---------- Texto griego decorativo y modo ligero ---------- */
+.head .gr{display:block;margin:0 0 4px;color:var(--acc-hi);opacity:.85}
+html.lite .jv-act,html.lite .jv-idea,html.lite .jv-stats>div{-webkit-backdrop-filter:none;backdrop-filter:none;background:linear-gradient(150deg,#0E1830,#08101F)}
+html.lite .jv-hero-in{background:#08142B}
+@media (prefers-reduced-transparency:reduce){
+  .jv-act,.jv-idea,.jv-stats>div{-webkit-backdrop-filter:none;backdrop-filter:none;background:linear-gradient(150deg,#0E1830,#08101F)}
+}

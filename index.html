@@ -1084,6 +1084,7 @@ button.pdfc{cursor:pointer;font:inherit;font-size:.76rem;font-weight:800}
 @media (prefers-reduced-motion:reduce){.pjbar i{transition:none}.tkcol>summary .chev{transition:none}}
 </style>
 <link rel="stylesheet" href="/estelar.css">
+<link rel="stylesheet" href="/jev.css">
 <div class="sky" aria-hidden="true"><i class="stars"></i><i class="ring"></i><i class="grain"></i></div>
 
 <div class="app">
@@ -1142,7 +1143,7 @@ async function connectDrive(){
   catch(e){toast('No se pudo iniciar Google Drive: '+e.message+' — revisa /api/drive/diagnose')}}
 function driveReturnNotice(){const q=new URLSearchParams(location.search);if(q.get('drive')!=='connected')return;toast('✓ Google Drive conectado. Los archivos se guardarán en la carpeta Arca.');q.delete('drive');history.replaceState(null,'',location.pathname+(q.toString()?'?'+q:'')+location.hash)}
 /* ---------- constants ---------- */
-const COLS=['people','teams','songs','services','events','projects','tasks','recurring','settings','requests','devos','devoviews','devocomments','setlists','pwresets','eventos'];
+const COLS=['people','teams','songs','services','events','projects','tasks','recurring','settings','requests','devos','devoviews','devocomments','setlists','pwresets','eventos','jevacts','jevideas'];
 const S={}; COLS.forEach(c=>S[c]=[]);
 const ICON={
   inicio:'<path d="M3 10.5 12 3l9 7.5V20a1 1 0 0 1-1 1h-5v-6H9v6H4a1 1 0 0 1-1-1z"/>',
@@ -1155,7 +1156,10 @@ const ICON={
   devocionales:'<rect x="3" y="5" width="18" height="14" rx="3"/><path d="M10 9.2v5.6l4.8-2.8z"/>',
   alabanzas:'<path d="M9 18V5.5l11-2.5v12.5"/><circle cx="6.5" cy="18" r="2.5"/><circle cx="17.5" cy="15.5" r="2.5"/>'
 };
-const NAV=[['turno','Tú'],['inicio','Inicio'],['servicios','Servicios'],['alabanzas','Alabanzas'],['personas','Personas'],['equipos','Equipos'],['calendario','Calendario'],['tareas','Tareas'],['devocionales','Devocionales']];
+const NAV_PHILLY=[['turno','Tú'],['inicio','Inicio'],['servicios','Servicios'],['alabanzas','Alabanzas'],['personas','Personas'],['equipos','Equipos'],['calendario','Calendario'],['tareas','Tareas'],['devocionales','Devocionales']];
+const NAV_JEV=[['turno','Tú'],['inicio','Inicio'],['actividades','Actividades'],['ideas','Ideas'],['personas','Equipo'],['tareas','Tareas']];
+const navList=()=>SPACE==='jev'?NAV_JEV:NAV_PHILLY;
+const NAV=NAV_PHILLY;
 const TASK_ST=[['todo','Por hacer'],['doing','En curso'],['review','Por revisar'],['done','Hecho']];
 const ASG_ST=['pendiente','confirmado','declinado'];
 const NOTAS=['C','C#','D','D#','E','F','F#','G','G#','A','Bb','B'];
@@ -1166,7 +1170,7 @@ const VOCES=['Femenina','Masculina','Dueto'];
 const now=new Date();
 const ui={alView:'listas',rolMonth:null,rolPerson:'',route:'inicio',serviceId:null,svcTab:'planes',horizon:14,alRange:'semana',alFilter:'',month:new Date(now.getFullYear(),now.getMonth(),1),taskView:'kanban',fProject:'',fAssignee:'',q:''};
 let mode='loading', ASSETS=null;
-{const h=(location.hash||'').slice(1); if(NAV.some(n=>n[0]===h)||h==='evento') ui.route=h; else {try{if(localStorage.getItem('arca.me'))ui.route='turno'}catch(e){}}}
+{const h=(location.hash||'').slice(1); if(NAV_PHILLY.some(n=>n[0]===h)||NAV_JEV.some(n=>n[0]===h)||h==='evento') ui.route=h; else {try{if(localStorage.getItem('arca.me'))ui.route='turno'}catch(e){}}}
 try{const v=localStorage.getItem('nave.taskView'); if(v) ui.taskView=v;}catch(e){}
 
 /* ---------- helpers ---------- */
@@ -1270,6 +1274,57 @@ const SB=window.supabase.createClient(SUPABASE_URL,SUPABASE_PUBLISHABLE_KEY);
 const db=SB;
 let CANWRITE=false,LASTERR='',ME_USER=null, LIVE_CHANNEL=null;
 
+/* ---------- Espacios (Philly, JEV+…): cada grupo ve solo sus datos ---------- */
+/* SPACES_OK = la base ya tiene la columna space y la tabla arca_members (spaces.sql). Si aún no, Arca funciona como antes. */
+const SPACE_INFO={
+  philly:{name:'Philly',sub:'Ministerio de alabanza',short:'Philly'},
+  jev:{name:'JEV+',sub:'Jóvenes En Victoria',short:'JEV+'}};
+let SPACE='philly',SPACES=['philly'],SPACE_ROLE='member',SPACES_OK=false;
+const spaceName=(s=SPACE)=>(SPACE_INFO[s]||{name:s}).name;
+function applySpace(){try{document.body.dataset.space=SPACE;document.documentElement.dataset.space=SPACE;
+  const tc=document.querySelector('meta[name=theme-color]');if(tc)tc.content=SPACE==='jev'?'#050A14':'#080606';
+  document.title=SPACE==='jev'?'JEV+ · Arca':'Arca';evHook('spaceChrome',SPACE)}catch(_){}}
+async function loadSpaces(){
+  SPACES_OK=false;SPACES=['philly'];SPACE='philly';SPACE_ROLE='member';
+  const email=norm(ME_USER?.email||'');
+  const {data,error}=await SB.from('arca_members').select('space,role').eq('email',email);
+  if(error){
+    /* Tabla aún no creada → modo anterior. Cualquier otro error se muestra: no queremos mezclar espacios por accidente. */
+    if(error.code==='42P01'||error.code==='PGRST205'||/arca_members/.test(error.message||'')&&/not find|does not exist/i.test(error.message||'')){applySpace();return}
+    throw error}
+  SPACES_OK=true;
+  const mine=(data||[]).map(r=>r.space);
+  SPACES=mine.length?SPACE_ORDER(mine):['philly'];
+  let pref='';try{pref=localStorage.getItem('arca.space')||''}catch(_){}
+  SPACE=SPACES.includes(pref)?pref:SPACES[0];
+  SPACE_ROLE=((data||[]).find(r=>r.space===SPACE)||{}).role||'member';
+  if(!navList().some(n=>n[0]===ui.route)&&ui.route!=='evento')ui.route='inicio';
+  applySpace()}
+const SPACE_ORDER=l=>[...new Set(l)].sort((a,b)=>(a==='philly'?-1:b==='philly'?1:0)||a.localeCompare(b));
+async function switchSpace(s){
+  if(!SPACES.includes(s)||s===SPACE)return;
+  SPACE=s;try{localStorage.setItem('arca.space',s)}catch(_){}
+  try{const {data}=await SB.from('arca_members').select('space,role').eq('email',norm(ME_USER?.email||'')).eq('space',s);SPACE_ROLE=((data||[])[0]||{}).role||'member'}catch(_){SPACE_ROLE='member'}
+  applySpace();COLS.forEach(c=>S[c]=[]);ME='';ui.route='inicio';try{history.replaceState(null,'','#inicio')}catch(_){}
+  render();
+  try{await syncData();await resolveIdentity();renderLive();render();toast('Estás en '+spaceName()+'.')}catch(e){toast('No se pudo abrir '+spaceName()+': '+(e?.message||'error'))}}
+/* Quien se agrega a un espacio que no es Philly recibe su membresía (por correo). Sin esto vería Philly por el acceso heredado. */
+const validEmail=e=>/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(String(e||'').trim());
+async function syncMember(email,alsoPhilly){
+  if(!SPACES_OK||SPACE==='philly'||!ADMIN()||!validEmail(email))return;
+  const em=norm(email).trim();const rows=[{space:SPACE,email:em,role:'member'}];
+  if(alsoPhilly)rows.push({space:'philly',email:em,role:'member'});
+  const {error}=await SB.from('arca_members').upsert(rows,{onConflict:'space,email',ignoreDuplicates:true});
+  if(error){console.warn('membresía',error);toast('Guardé el perfil, pero no pude dar acceso a '+em+' ('+(error.code||'error')+'). Avísale a Ricardo.')}}
+async function dropMember(email){
+  if(!SPACES_OK||SPACE==='philly'||!ADMIN()||!validEmail(email))return;
+  const {error}=await SB.from('arca_members').delete().eq('space',SPACE).eq('email',norm(email).trim());
+  if(error)console.warn('membresía',error)}
+/* Lecturas y escrituras siempre con el espacio activo */
+const dbSelect=()=>{const q=SB.from('arca_records').select('collection,id,data');return SPACES_OK?q.eq('space',SPACE):q};
+const dbUpsert=(col,id,data)=>SPACES_OK?SB.from('arca_records').upsert({space:SPACE,collection:col,id,data},{onConflict:'space,collection,id'}):SB.from('arca_records').upsert({collection:col,id,data});
+const dbDelete=(col,id)=>{const q=SB.from('arca_records').delete().eq('collection',col).eq('id',id);return SPACES_OK?q.eq('space',SPACE):q};
+
 function loadLocal(){return;try{const raw=localStorage.getItem('nave.data');if(raw){const d=JSON.parse(raw);COLS.forEach(c=>S[c]=d[c]||[])}}catch(e){}}
 function saveLocal(){return;try{localStorage.setItem('nave.data',JSON.stringify(S))}catch(e){}}
 function writeErr(e,col){
@@ -1285,7 +1340,7 @@ async function save(col,obj){
   if(i>=0)S[col][i]=rec;else S[col].push(rec);
   if(mode==='live'){
     try{
-      const {error}=await SB.from('arca_records').upsert({collection:col,id:rid,data:data});
+      const {error}=await dbUpsert(col,rid,data);
       if(error)throw error;
       LASTERR='';
     }catch(e){
@@ -1299,7 +1354,7 @@ async function save(col,obj){
 async function remove(col,id){
   const old=S[col].find(x=>x.id===id); S[col]=S[col].filter(x=>x.id!==id);
   if(mode==='live'){
-    try{const {error}=await SB.from('arca_records').delete().eq('collection',col).eq('id',id);if(error)throw error}
+    try{const {error}=await dbDelete(col,id);if(error)throw error}
     catch(e){if(old)S[col].push(old);writeErr(e);return false}
   }else{toast('Inicia sesión para guardar.');return false}
   return true;
@@ -1372,7 +1427,7 @@ async function resolveIdentity(){
     if(person.auth_user_id!==uid){
       const patched={...person,auth_user_id:uid};
       const i=S.people.findIndex(x=>x.id===person.id);if(i>=0)S.people[i]=patched;
-      try{const {error}=await SB.from('arca_records').upsert({collection:'people',id:person.id,data:(()=>{const {id,...d}=patched;return d})()});if(error)throw error}catch(e){console.warn('No se pudo guardar el vínculo de cuenta',e)}
+      try{const {error}=await dbUpsert('people',person.id,(()=>{const {id,...d}=patched;return d})());if(error)throw error}catch(e){console.warn('No se pudo guardar el vínculo de cuenta',e)}
     }
     return true;
   }
@@ -1380,7 +1435,7 @@ async function resolveIdentity(){
 }
 
 async function subscribeData(){
-  const {data,error}=await SB.from('arca_records').select('collection,id,data');
+  const {data,error}=await dbSelect();
   if(error)throw error;
   COLS.forEach(c=>S[c]=[]);
   for(const r of (data||[]))if(COLS.includes(r.collection))S[r.collection].push({id:r.id,...(r.data||{})});
@@ -1390,8 +1445,9 @@ async function subscribeData(){
   const ch=SB.channel('arca-live-'+Date.now());LIVE_CHANNEL=ch;
   if(old){try{SB.removeChannel(old)}catch(_){}}
   ch
-    .on('postgres_changes',{event:'*',schema:'public',table:'arca_records'},payload=>{
+    .on('postgres_changes',Object.assign({event:'*',schema:'public',table:'arca_records'},SPACES_OK?{filter:'space=eq.'+SPACE}:{}),payload=>{
       const r=payload.new||payload.old;if(!r||!COLS.includes(r.collection))return;
+      if(SPACES_OK&&r.space&&r.space!==SPACE)return;
       if(payload.eventType==='DELETE')S[r.collection]=S[r.collection].filter(x=>x.id!==r.id);
       else {const rec={id:r.id,...(r.data||{})};const i=S[r.collection].findIndex(x=>x.id===r.id);if(i>=0)S[r.collection][i]=rec;else S[r.collection].push(rec)}
       render();
@@ -1429,7 +1485,7 @@ async function init(){
     if(sess&&ME_USER&&mode==='live'&&_event!=='SIGNED_IN'){ME_USER=sess.user;try{SB.realtime.setAuth(sess.access_token)}catch(_){}return}
     if(sess){
       ME_USER=sess.user; CANWRITE=true; mode='live';unlockArca();maybeForcePw(sess.user);
-      syncData().then(async()=>{await resolveIdentity();renderLive();render()}).catch(e=>{console.error('Arca / Supabase:',e);toast('Supabase: '+(e?.message||e?.code||'error desconocido'))});
+      loadSpaces().then(()=>syncData()).then(async()=>{await resolveIdentity();renderLive();render()}).catch(e=>{console.error('Arca / Supabase:',e);toast('Supabase: '+(e?.message||e?.code||'error desconocido'))});
     }else{
       ME_USER=null; mode='auth'; renderLive(); renderAuth();
     }
@@ -1438,7 +1494,7 @@ async function init(){
   if(!session){mode='auth';renderLive();renderAuth();return}
   ME_USER=session.user; mode='live'; CANWRITE=true;unlockArca();maybeForcePw(session.user);
   renderLive(); render();
-  try{await syncData();await resolveIdentity();renderLive();render();}
+  try{await loadSpaces();await syncData();await resolveIdentity();renderLive();render();}
   catch(e){console.error('Arca / Supabase:',e);toast('Supabase: '+(e?.message||e?.code||'error desconocido'));console.error('SUPABASE ERROR',e);render()}
   setTimeout(()=>{try{maybeNews()}catch(_){}},4000);
 }
@@ -1579,9 +1635,10 @@ function editPerson(p={}){
     {id:'status',label:'Estado',type:'select',value:p.status||'activo',options:[['activo','Activo'],['inactivo','Inactivo']]},
     {id:'always',label:'Va a todos los servicios',type:'select',value:p.always?'1':'',options:[['','No'],['1','Sí · queda confirmado en todos (ej. Multimedia)']]},
     {type:'html',html:`<div class="field"><span class="lbl">Color en el rol de voces</span><div class="swatches">${PCOL.map((c,i)=>`<label title="Color ${i+1}"><input type="radio" name="f_color" value="${i}" ${(p.color!=null&&p.color!==''?Number(p.color):-1)===i?'checked':''}><span style="background:${c}"></span></label>`).join('')}</div></div>`},
+    ...(SPACE!=='philly'&&ADMIN()?[{id:'alsoPhilly',label:'Acceso a Arca (según su correo)',type:'select',value:'',options:[['','Solo '+spaceName()],['1',spaceName()+' y Philly']]}]:[]),
     {id:'notes',label:'Notas',type:'textarea',value:p.notes,ph:'Disponibilidad, dones, cumpleaños, alergias…'}],
-    onSave:v=>{const c=document.querySelector('input[name="f_color"]:checked');const extra=String(v.titleOther||'').split(',').map(x=>x.trim()).filter(Boolean);const {titleOther,...rest}=v;rest.titles=[...new Set([...(v.titles||[]),...extra])];rest.photo=newPhoto;rest.pin=v.pin?Number(v.pin):'';return save('people',{...p,...rest,...(c?{color:Number(c.value)}:{})})},
-    onDelete:p.id?()=>remove('people',p.id):null});
+    onSave:async v=>{const also=v.alsoPhilly;delete v.alsoPhilly;const c=document.querySelector('input[name="f_color"]:checked');const extra=String(v.titleOther||'').split(',').map(x=>x.trim()).filter(Boolean);const {titleOther,...rest}=v;rest.titles=[...new Set([...(v.titles||[]),...extra])];rest.photo=newPhoto;rest.pin=v.pin?Number(v.pin):'';const pid=await save('people',{...p,...rest,...(c?{color:Number(c.value)}:{})});if(pid)await syncMember(rest.email,also==='1');return pid},
+    onDelete:p.id?async()=>{const ok=await remove('people',p.id);if(ok)await dropMember(p.email)}:null});
 }
 function editTeam(t={}){
   const members=S.people.filter(p=>(p.teamIds||[]).includes(t.id)).map(p=>p.id);
@@ -1790,12 +1847,13 @@ function keysPanel(){if(!KEYREV.includes(ME))return '';const L=pendingKeys();if(
       <div class="lkeys" role="group" aria-label="Elegir el tono de ${esc(so.title)}" style="margin-top:8px">${isUrl(so.url)?`<a class="tb sm ${isAudio(so.url)?'aud':''}" href="${esc(so.url)}" target="_blank" rel="noopener">▶ Escuchar</a>`:`<a class="tb sm" href="${esc(ytSearch({song:so.title,artist:so.author}))}" target="_blank" rel="noopener">Buscar en YouTube</a>`}${NOTAS.map(n=>`<button class="tb sm lk" data-setkey="${so.id}|${n}" aria-label="Tono ${n}">${n}</button>`).join('')}</div></li>`}).join('')}</ul></details>`}
 /* ---------- Invitar personas: formulario de Google → solicitudes → Ricardo y Andrés aprueban ---------- */
 const APPROVERS=['mult2ujll39ya','mult3wdds4r3d'];
-const ADMIN=()=>APPROVERS.includes(ME);
+/* Philly: Ricardo y Andrés. Otros espacios: quien sea admin en arca_members. */
+const ADMIN=()=>SPACE==='philly'?APPROVERS.includes(ME):SPACE_ROLE==='admin';
 const inviteCfg=()=>byId('settings','invite')||{};
 const pendingReqs=()=>sortBy(S.requests.filter(r=>(r.status||'pendiente')==='pendiente'),r=>r.submittedAt||'');
 const approvedNoAccess=()=>S.requests.filter(r=>r.status==='aprobada'&&!r.accessSent);
-const inviteMsg=url=>`¡Hola! 👋 Te invito a unirte a *Arca*, la app de Taber Olocuilta donde vemos los cultos, las canciones y quién sirve cada día.\n\nLlena este formulario (2 minutos):\n${url}\n\nCuando Ricardo o Andrés lo aprueben, te mandamos tu acceso. ¡Dios te bendiga!`;
-function invitePanel(){const u=inviteCfg().formUrl,mgr=APPROVERS.includes(ME)||MANAGERS.includes(ME);
+const inviteMsg=url=>SPACE==='jev'?`¡Hola! 👋 Te invito a unirte al equipo de *JEV+* (Jóvenes En Victoria) en Arca: ahí vemos las actividades de los cultos y mandamos ideas de videos.\n\nLlena este formulario (2 minutos):\n${url}\n\nCuando los líderes lo aprueben, te mandamos tu acceso. ¡Dios te bendiga!`:`¡Hola! 👋 Te invito a unirte a *Arca*, la app de Taber Olocuilta donde vemos los cultos, las canciones y quién sirve cada día.\n\nLlena este formulario (2 minutos):\n${url}\n\nCuando Ricardo o Andrés lo aprueben, te mandamos tu acceso. ¡Dios te bendiga!`;
+function invitePanel(){const u=inviteCfg().formUrl,mgr=ADMIN()||MANAGERS.includes(ME);
   if(!u&&!mgr)return '';
   return `<section class="panel invp"><div><h2>¿Falta alguien? Invítalo</h2><p class="muted" style="margin:6px 0 0">Mándale el formulario. Cuando lo llene, a Ricardo y Andrés les llega la solicitud para aprobarla, crear su perfil y enviarle su acceso.</p></div>
     ${u?`<div class="row"><a class="btn primary" href="https://wa.me/?text=${encodeURIComponent(inviteMsg(u))}" target="_blank" rel="noopener">Invitar por WhatsApp</a><button class="btn" data-invcopy>Copiar link del formulario</button>${mgr?'<button class="btn ghost sm" data-invset>Cambiar link</button>':''}</div>`
@@ -1803,7 +1861,7 @@ function invitePanel(){const u=inviteCfg().formUrl,mgr=APPROVERS.includes(ME)||M
 async function setInviteUrl(){const cur=inviteCfg();openForm({title:'Link del formulario',saveLabel:'Guardar',intro:'<div class="info gold"><b>El formulario de Google</b><span>Pega el link para responder (el que empieza con https://forms.gle/ o https://docs.google.com/forms/…/viewform).</span></div>',
   fields:[{id:'formUrl',label:'Link del formulario',type:'url',value:cur.formUrl||'',required:true,ph:'https://forms.gle/…'}],
   onSave:async v=>{if(!/^https:\/\/(forms\.gle|docs\.google\.com\/forms)\//i.test(v.formUrl)){toast('Ese link no parece de Google Forms.');return}const ok=await save('settings',{...cur,id:'invite',formUrl:v.formUrl});if(ok)toast('Listo: ya se puede invitar desde Personas.')}})}
-function reqPanel(){if(!APPROVERS.includes(ME))return '';const L=pendingReqs(),A=approvedNoAccess();if(!L.length&&!A.length)return '';
+function reqPanel(){if(!ADMIN())return '';const L=pendingReqs(),A=approvedNoAccess();if(!L.length&&!A.length)return '';
   const line=(l,v)=>v?`<span><span class="lbl">${l}</span>${esc(v)}</span>`:'';
   return `<details class="tcard tfold" data-fold="solic" ${foldAttr('solic')}><summary><h2 class="th2">Solicitudes para unirse</h2><p class="small">${L.length?`<b class="tsb pend">${L.length} por aprobar</b> `:''}${A.length?`${A.length} aprobada${A.length===1?'':'s'} sin acceso enviado`:''}</p></summary>
     <ul class="rev">${[...L,...A].map(r=>{const p=r.personId&&byId('people',r.personId);return `<li><b style="font-size:1.1rem">${esc(r.name||'Sin nombre')}</b>
@@ -1816,7 +1874,7 @@ const accessMsg=r=>`¡Bienvenido(a) a Arca, ${String(r.name||'').split(/\s+/)[0]
 const pendingPw=()=>sortBy(S.pwresets.filter(r=>r.status==='pendiente'),r=>r.at||'');
 const personByEmail=em=>S.people.find(p=>norm(p.email||'')===norm(em||''));
 const pwMsg=(p,email,pw)=>`Hola${p?' '+String(p.name||'').split(/\s+/)[0]:''} 👋\n\nTe restablecí la contraseña de Arca:\n\nCorreo: ${email}\nContraseña temporal: ${pw}\n\nEntra en ${location.origin} y Arca te pedirá que pongas una contraseña nueva.`;
-function pwPanel(){if(!APPROVERS.includes(ME))return '';const L=pendingPw();if(!L.length)return '';
+function pwPanel(){if(!ADMIN())return '';const L=pendingPw();if(!L.length)return '';
   return `<details class="tcard tfold" data-fold="pwres" ${foldAttr('pwres')}><summary><h2 class="th2">Contraseñas olvidadas</h2><p class="small"><b class="tsb pend">${L.length} ${L.length===1?'solicitud':'solicitudes'}</b> esperando una contraseña temporal.</p></summary>
     <ul class="rev">${L.map(r=>{const p=personByEmail(r.email);return `<li><b style="font-size:1.1rem">${esc(p?p.name:'Sin perfil en Personas')}</b>
       <div class="pinfo" style="padding:8px 0;border:0"><span><span class="lbl">Correo</span>${esc(r.email)}</span>${p&&p.phone?`<span><span class="lbl">Teléfono</span>${esc(p.phone)}</span>`:''}<span><span class="lbl">Pidió</span>${esc(r.at?new Date(r.at).toLocaleString('es',{day:'numeric',month:'short',hour:'numeric',minute:'2-digit'}):'')}</span></div>
@@ -1849,7 +1907,7 @@ function maybeForcePw(user){if(pwAsked||!user?.user_metadata?.must_change_passwo
 async function approveReq(id){const r=byId('requests',id);if(!r)return;
   const ex=S.people.find(p=>(r.email&&norm(p.email)===norm(r.email))||norm(p.name)===norm(r.name));
   let pid=ex&&ex.id;if(!pid){pid=await save('people',{name:String(r.name||'').trim(),phone:r.phone||'',email:r.email||'',birth:/^\d{4}-\d{2}-\d{2}$/.test(r.birth||'')?r.birth:'',titles:[],teamIds:[],status:'activo',notes:[r.ministries?'Ministerio: '+r.ministries:'',r.invitedBy?'Invitado por: '+r.invitedBy:'',r.notes||''].filter(Boolean).join('\n'),photo:''});if(!pid)return}
-  const ok=await save('requests',{...r,status:'aprobada',personId:pid,approvedBy:ME,approvedAt:new Date().toISOString()});if(!ok)return;
+  const ok=await save('requests',{...r,status:'aprobada',personId:pid,approvedBy:ME,approvedAt:new Date().toISOString()});if(!ok)return;if(r.email)await syncMember(r.email,false);
   toast(ex?'Ya tenía perfil: la solicitud quedó ligada a '+ex.name+'.':(isUrl(r.photoUrl)?'Perfil creado. Descarga su foto con “Ver su foto” y súbela aquí.':'Perfil creado. Ponle su foto, títulos y equipos.'));render();setTimeout(()=>editPerson(byId('people',pid)||{}),250)}
 /* ---------- Devocionales: video por link, visto por y comentarios ---------- */
 const devoSorted=()=>sortBy(S.devos,d=>(d.date||'')+(d.createdAt||'')).reverse();
@@ -1905,7 +1963,7 @@ async function fillKeyInSets(so,key){const t=norm(so.title);for(const sv of S.se
 function myAlerts(){if(!ME)return {conf:0,tasks:0,review:0,keys:0,total:0};
   const conf=svcsBetween(TODAY,addDays(TODAY,30)).filter(x=>!x.cancelled).filter(x=>{const m=(x.assignments||[]).filter(a=>a.personId===ME);return m.length&&m.some(a=>a.status!=='confirmado'&&a.status!=='declinado')&&!m.every(a=>a.status==='declinado')}).length;
   const lim=addDays(TODAY,3);const tasks=S.tasks.filter(t=>hasP(t,ME)&&t.status!=='done'&&t.status!=='review'&&t.due&&t.due<=lim).length;
-  const review=S.tasks.filter(t=>t.status==='review'&&canApprove(t)).length;const keys=(KEYREV.includes(ME)?pendingKeys().length:0)+(APPROVERS.includes(ME)?pendingReqs().length:0);const fresh=S.tasks.filter(t=>isNewFor(t,ME)&&t.status!=='done'&&!(t.status!=='review'&&t.due&&t.due<=lim)).length;return {conf,tasks:tasks+fresh,fresh,review,keys,devo:ME?devoUnseen().length:0,total:conf+tasks+fresh+review+keys+(ME?devoUnseen().length:0)}}
+  const review=S.tasks.filter(t=>t.status==='review'&&canApprove(t)).length;const keys=(KEYREV.includes(ME)?pendingKeys().length:0)+(ADMIN()?pendingReqs().length:0);const fresh=S.tasks.filter(t=>isNewFor(t,ME)&&t.status!=='done'&&!(t.status!=='review'&&t.due&&t.due<=lim)).length;return {conf,tasks:tasks+fresh,fresh,review,keys,devo:ME?devoUnseen().length:0,total:conf+tasks+fresh+review+keys+(ME?devoUnseen().length:0)}}
 function alertTitle(a){const p=[];if(a.conf)p.push(a.conf+(a.conf===1?' culto por confirmar':' cultos por confirmar'));if(a.tasks)p.push(a.tasks+(a.tasks===1?' tarea nueva o por vencer':' tareas nuevas o por vencer'));if(a.review)p.push(a.review+' por revisar');if(a.devo)p.push(a.devo+(a.devo===1?' devocional nuevo':' devocionales nuevos'));if(a.keys)p.push(a.keys+(a.keys===1?' pendiente de revisar (tonos o solicitudes)':' pendientes de revisar (tonos o solicitudes)'));return p.join(', ')}
 const gcalDate=(d,m)=>{const x=parse(d);x.setHours(0,m,0,0);const z=n=>String(n).padStart(2,'0');return `${x.getFullYear()}${z(x.getMonth()+1)}${z(x.getDate())}T${z(x.getHours())}${z(x.getMinutes())}00`};
 function gcalSvc(x){const st=mins(x.time)||0;const role=rolesOf(x,ME);
@@ -1979,7 +2037,10 @@ function superPanel(){const L=svcsBetween(TODAY,addDays(TODAY,14)).filter(s=>!s.
   return `<details class="tcard sup tfold" data-fold="sup" ${foldAttr('sup')}><summary><h2 class="th2">Quién falta confirmar</h2><p class="small">Próximos 14 días · ${tot?tot+(tot===1?' pendiente':' pendientes'):'todos confirmados ✓'}</p></summary>
     ${groups.length?`<ul class="sup-l">${groups.map(({s,miss})=>{const d=parse(s.date);return `<li><button class="sup-h" data-svc="${s.id}"><span class="sup-t"><b>${esc(LDOW[d.getDay()].replace(/^./,c=>c.toUpperCase()))} ${d.getDate()}</b> · ${esc(ampm(s.time))} · ${esc(s.title)}</span><span class="sup-a" aria-hidden="true">›</span></button>
       <div class="sup-p">${miss.map(a=>a.personId?`<span class="sup-c ${a.status==='declinado'?'no':'pend'}"><i style="background:${pColor(a.personId)}"></i>${esc(pName(a.personId).split(/\s+/)[0])} · ${a.status==='declinado'?'no puede ir':'sin confirmar'}</span>`:`<span class="sup-c open">${esc(a.position||'Posición')} · sin asignar</span>`).join('')}</div></li>`}).join('')}</ul>`:''}</details>`}
-const MANAGERS=['mult2ujll39ya','mult3wdds4r3d','mulzkrb45rdj9','v-yesy','muly93vhju3as'];
+const MANAGERS_PHILLY=['mult2ujll39ya','mult3wdds4r3d','mulzkrb45rdj9','v-yesy','muly93vhju3as'];
+/* Philly: lista fija. Otros espacios: quienes tienen título de Líder o Pastor (y los admin). */
+const mgrIds=()=>SPACE==='philly'?MANAGERS_PHILLY:[...new Set([...S.people.filter(p=>(p.titles||[]).some(t=>/l[ií]der|pastor|admin/i.test(t))).map(p=>p.id),...(SPACE_ROLE==='admin'&&ME?[ME]:[])])];
+const MANAGERS={includes:id=>mgrIds().includes(id),filter:f=>mgrIds().filter(f)};
 /* Arpa (el reproductor de pistas en la compu de Ricardo y la de medios): solo líderes, solo en computadora */
 const arpaOk=()=>MANAGERS.includes(ME)&&matchMedia('(hover:hover) and (pointer:fine)').matches;
 async function sendToArpa(svc){const rows=(svc.setlist||[]).filter(r=>r.song);if(!rows.length){toast('Este culto todavía no tiene canciones.');return}
@@ -2276,8 +2337,8 @@ function drawTour(){if(!TOUR)return;const st=TOUR.steps[TOUR.i];
   const f=r.querySelector('[data-tour="next"],[data-tour="end"]');if(f)f.focus();
   window.removeEventListener('resize',drawTour);window.addEventListener('resize',drawTour)}
 document.addEventListener('keydown',e=>{if(!TOUR)return;if(e.key==='Escape')endTour();else if(e.key==='ArrowRight'&&TOUR.i<TOUR.steps.length-1){TOUR.i++;drawTour()}else if(e.key==='ArrowLeft'&&TOUR.i>0){TOUR.i--;drawTour()}});
-function maybeTourAfterPick(){const p=ME&&byId('people',ME);if(p&&!tourSeenV())setTimeout(()=>startTour(false),350)}
-function maybeNews(){if(TOUR||!ME)return;const v=tourSeenV();if(v>0&&v<TOUR_VERSION)setTimeout(()=>startTour(true),600)}
+function maybeTourAfterPick(){if(SPACE!=='philly')return;const p=ME&&byId('people',ME);if(p&&!tourSeenV())setTimeout(()=>startTour(false),350)}
+function maybeNews(){if(SPACE!=='philly'||TOUR||!ME)return;const v=tourSeenV();if(v>0&&v<TOUR_VERSION)setTimeout(()=>startTour(true),600)}
 /* ---------- visor de PDF dentro de Arca ---------- */
 let pdfjsP=null;
 function loadPdfJs(){if(window.pdfjsLib)return Promise.resolve(window.pdfjsLib);
@@ -2328,9 +2389,14 @@ function noConn(){return `<section class="panel noconn" role="alert">
 function renderNav(){if(mode!=='live'||!ME_USER)return;
   const mp=ME&&byId('people',ME);
   const al=myAlerts();const badge=al.total?`<span class="nbadge" aria-label="${esc(alertTitle(al))}">${al.total>9?'9+':al.total}</span>`:'';
-  $('#navItems').innerHTML=NAV.map(([k,l])=>`<button class="nav" data-go="${k}" ${ui.route===k?'aria-current="page"':''} ${k==='turno'&&al.total?`title="${esc(alertTitle(al))}"`:''}>${k==='turno'&&mp&&mp.photo?`<img class="navph" src="${assetUrl(mp.photo)}" alt="">`:svg(k)}<span>${l}</span>${k==='turno'?badge:''}</button>`).join('');
+  $('#navItems').innerHTML=spaceSwitcher()+navList().map(([k,l])=>`<button class="nav" data-go="${k}" ${ui.route===k?'aria-current="page"':''} ${k==='turno'&&al.total?`title="${esc(alertTitle(al))}"`:''}>${k==='turno'&&mp&&mp.photo?`<img class="navph" src="${assetUrl(mp.photo)}" alt="">`:svg(k)}<span>${l}</span>${k==='turno'?badge:''}</button>`).join('');
+  {const mb=document.querySelector('.mbar');if(mb){mb.querySelectorAll('.spsw').forEach(x=>x.remove());const h=spaceSwitcher();if(h)mb.insertAdjacentHTML('beforeend',h)}}
   const mt=document.querySelector('.mbar .mt');if(mt){const b0=mt.querySelector('.nbadge');if(b0)b0.remove();if(al.total)mt.insertAdjacentHTML('beforeend',badge)}
 }
+/* Cambiar de espacio (solo si perteneces a más de uno) */
+function spaceSwitcher(){if(!SPACES_OK||SPACES.length<2)return '';
+  return `<div class="spsw" role="group" aria-label="Espacio">${SPACES.map(s=>`<button type="button" data-sp="${esc(s)}" ${s===SPACE?'aria-pressed="true"':''}>${esc((SPACE_INFO[s]||{short:s}).short)}</button>`).join('')}</div>`}
+document.addEventListener('click',e=>{const b=e.target.closest&&e.target.closest('.spsw [data-sp]');if(!b)return;e.preventDefault();switchSpace(b.dataset.sp)});
 function isEmpty(){return COLS.every(c=>S[c].length===0)}
 
 function vInicio(){
@@ -3238,7 +3304,7 @@ function palItems(q){
   const add=(grp,label,hint,run)=>{if(!Q||norm(label+' '+(hint||'')).includes(Q))out.push({grp,label,hint,run})};
   if(ADMIN()){add('Crear','Agregar persona','',()=>editPerson());add('Crear','Nuevo evento','',()=>editEvent({},TODAY))}
   add('Crear','Nuevo proyecto','',()=>{go('tareas',false);editProject()});
-  NAV.forEach(([k,l])=>add('Ir a',l,'',()=>go(k,false)));
+  navList().forEach(([k,l])=>add('Ir a',l,'',()=>go(k,false)));
   add('Ir a','Horario semanal','Servicios',()=>{ui.svcTab='horario';go('servicios',false)});
   add('Ir a','Repertorio de canciones','Servicios',()=>{ui.svcTab='canciones';go('servicios',false)});
   upcomingSvcs(28).forEach(s=>add('Próximos cultos',s.title,fDate(s.date)+' · '+ampm(s.time),()=>{ui.route='servicios';ui.serviceId=s.id;render();window.scrollTo(0,0)}));
@@ -3286,7 +3352,9 @@ function render(){if(DRAG)return;if(mode!=='live'||!ME_USER){if(mode!=='live'&&m
   renderNav();
   document.body.classList.toggle('simple',ui.route==='turno');document.body.dataset.route=ui.route;
   const v={turno:vTurno,inicio:vInicio,servicios:vServicios,alabanzas:vAlabanzas,personas:vPersonas,equipos:vEquipos,calendario:vCalendario,tareas:vTareas,devocionales:vDevos,evento:()=>evHook('vEvento')}[ui.route]||vInicio;
-  $('#main').innerHTML=(mode==='local'&&isEmpty()&&ui.route!=='inicio'&&ui.route!=='turno')?noConn():v();
+  /* En otros espacios (JEV+) las pantallas vienen de su propio archivo (jev.js) */
+  const sv=SPACE!=='philly'&&typeof window.spaceView==='function'?window.spaceView(SPACE,ui.route):null;
+  $('#main').innerHTML=(mode==='local'&&isEmpty()&&ui.route!=='inicio'&&ui.route!=='turno')?noConn():(sv||v)();
   if(fid){const el=document.getElementById(fid);if(el){if(val!=null&&el.value!==val)el.value=val;el.focus();if(sel)try{el.setSelectionRange(...sel)}catch(e){}}}
   if(ui.focusId){const el=document.getElementById(ui.focusId);ui.focusId=null;if(el)el.focus()}
   {const q=document.activeElement;if(q&&q.dataset&&q.dataset.qa&&q.value)drawSug(q.dataset.qa,q.value)}
@@ -3490,4 +3558,5 @@ init();
 </script>
 
 <script src="/evento.js"></script>
+<script src="/jev.js"></script>
 </body></html>

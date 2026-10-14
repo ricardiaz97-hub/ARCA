@@ -27,5 +27,11 @@ y dice exactamente qué falta. No muestra ningún secreto.
      (el scope `drive.file` no requiere verificación).
 4. En Arca: inicia sesión → **Conectar Google Drive** → acepta.
 
+## Espacios (Philly y JEV+)
+1. **Supabase → SQL Editor**: ejecuta `spaces.sql` **antes** de publicar esta versión de la app. Es seguro repetirlo.
+   (Para deshacerlo: `spaces-rollback.sql`.) No vuelvas a correr `lock-down.sql` después de este paso.
+2. Ricardo queda como admin de `philly` y `jev`. Para agregar admins o jóvenes: en Arca → JEV+ → Equipo → Agregar persona (con su correo). Eso les da acceso solo a JEV+; para que sigan en Philly, elige “JEV+ y Philly”.
+3. Más detalles en `CLAUDE.md`.
+
 ## Límite
 Vercel no acepta subidas de más de 4.5 MB por petición; Arca avisa si un archivo pasa de 4 MB.

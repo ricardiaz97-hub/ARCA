@@ -2,7 +2,7 @@
 //  action "reset"   → crea una contraseña temporal (y la cuenta, si no existía) y la devuelve UNA vez.
 //  action "dismiss" → descarta la solicitud.
 import crypto from 'node:crypto';
-import { supabaseAdmin } from '../../lib/supabase-admin.js';
+import { supabaseAdmin, upsertRecord } from '../../lib/supabase-admin.js';
 import { requireApprover } from '../../lib/arca-admins.js';
 
 async function findUserByEmail(sb, email) {
@@ -30,7 +30,7 @@ export default async function handler(req, res) {
     if (error) throw error;
     if (!rec) return res.status(404).json({ error: 'not_found', message: 'La solicitud ya no existe.' });
     const email = String(rec.data?.email || '').toLowerCase();
-    const done = extra => sb.from('arca_records').upsert({ collection: 'pwresets', id, data: { ...rec.data, ...extra, resolvedBy: admin.email, resolvedAt: new Date().toISOString() } });
+    const done = extra => upsertRecord(sb, 'pwresets', id, { ...rec.data, ...extra, resolvedBy: admin.email, resolvedAt: new Date().toISOString() });
 
     if (action === 'dismiss') { const { error: e } = await done({ status: 'descartada' }); if (e) throw e; return res.json({ ok: true }); }
 
