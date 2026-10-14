@@ -82,7 +82,7 @@ function vJevActs(){
   const keep=a=>!f||a.kind===f;
   const chips=`<div class="jv-chips" role="group" aria-label="Filtrar por tipo"><button class="chip ${f?'':'on'}" data-jev="kind" data-k="">Todo</button>${JEV_KINDS.map(([k,l])=>`<button class="chip ${f===k?'on':''}" data-jev="kind" data-k="${k}">${l}</button>`).join('')}</div>`;
   const list=up.filter(keep);
-  return `<div class="head"><div><h1>Actividades</h1><p>Los cultos y todo lo que viene para JEV+.</p></div>
+  return `<div class="head"><div><span class="gr" aria-hidden="true">ΛΑΤΡΕΙΑ</span><h1>Actividades</h1><p>Los cultos y todo lo que viene para JEV+.</p></div>
     <div class="row">${jevMgr()?'<button class="btn primary" data-jev="newact">Nueva actividad</button>':''}</div></div>
     ${chips}
     ${list.length?`<div class="jv-stack">${list.map(a=>jevActCard(a)).join('')}</div>`:`<section class="panel empty"><b>${up.length?'No hay actividades de ese tipo.':'Todavía no hay actividades.'}</b><p class="muted">${jevMgr()?'Toca “Nueva actividad” para agregar el próximo culto.':'Cuando los líderes agreguen el próximo culto, aparecerá aquí.'}</p></section>`}
@@ -111,6 +111,7 @@ async function jevToggleGo(id){
 }
 
 /* ---------- Ideas de videos ---------- */
+const jevSparks=n=>[1,2,4,7,11].filter(t=>n>=t).length;
 const jevIdeaSorted=f=>jevIdeasAll().filter(i=>!f||i.status===f).sort((x,y)=>{
   const open=s=>s==='publicada'||s==='descartada'?1:0;
   return open(x.status)-open(y.status)||(y.votes||[]).length-(x.votes||[]).length||String(y.createdAt||'').localeCompare(String(x.createdAt||''))});
@@ -123,6 +124,7 @@ function jevIdeaCard(i){
     <div class="jv-body">
       <div class="jv-meta"><span class="jv-state s-${esc(st)}">${esc(JEV_STATE[st]||'Nueva')}</span>${i.authorId?`<span class="small muted">Idea de ${esc(jevFirst(i.authorId))}</span>`:''}</div>
       <h3>${esc(i.title)}</h3>
+      ${votes.length?`<span class="sparks" role="img" aria-label="${votes.length} ${votes.length===1?'voto':'votos'}: ${jevSparks(votes.length)} de 5 destellos">${[0,1,2,3,4].map(k=>`<i class="${k<jevSparks(votes.length)?'on':''}"></i>`).join('')}</span>`:''}
       ${i.desc?`<p class="jv-notes">${esc(i.desc)}</p>`:''}
       ${isUrl(i.ref)?`<a class="jv-link" href="${esc(i.ref)}" target="_blank" rel="noopener">Ver referencia ↗</a>`:''}
       ${st==='publicada'&&isUrl(i.videoUrl)?`<a class="btn primary sm" href="${esc(i.videoUrl)}" target="_blank" rel="noopener">▶ Ver el video</a>`:''}
@@ -140,7 +142,7 @@ function vJevIdeas(){
   const counts=Object.fromEntries(JEV_STATES.map(([k])=>[k,jevIdeasAll().filter(i=>(i.status||'nueva')===k).length]));
   const chips=`<div class="jv-chips" role="group" aria-label="Filtrar por estado"><button class="chip ${f?'':'on'}" data-jev="state" data-k="">Todas</button>${JEV_STATES.filter(([k])=>k!=='descartada'||counts.descartada).map(([k,l])=>`<button class="chip ${f===k?'on':''}" data-jev="state" data-k="${k}">${l}${counts[k]?` · ${counts[k]}`:''}</button>`).join('')}</div>`;
   const list=jevIdeaSorted(f).filter(i=>f||(i.status!=='descartada'));
-  return `<div class="head"><div><h1>Ideas de videos</h1><p>Manda tu idea y vota las que más te gusten. Los líderes eligen cuáles se graban.</p></div>
+  return `<div class="head"><div><span class="gr" aria-hidden="true">ΕΥΑΓΓΕΛΙΟΝ</span><h1>Ideas de videos</h1><p>Manda tu idea y vota las que más te gusten. Los líderes eligen cuáles se graban.</p></div>
     <div class="row">${ME?'<button class="btn primary" data-jev="newidea">Mandar una idea</button>':''}</div></div>
     ${ME?'':'<div class="info warn" role="alert"><b>Tu perfil aún no está vinculado.</b> Pídele a un líder que agregue tu correo en Equipo para poder mandar ideas.</div>'}
     ${chips}
@@ -167,7 +169,7 @@ function jevEditStatus(i){
     {id:'status',label:'Estado',type:'select',value:i.status||'nueva',options:JEV_STATES},
     {id:'note',label:'Nota para el equipo',type:'textarea',value:i.note,ph:'Fecha de grabación, quién la lleva, ajustes…'},
     {id:'videoUrl',label:'Link del video publicado (cuando ya salió)',type:'url',value:i.videoUrl,ph:'https://www.youtube.com/…'}],
-    onSave:async v=>{await save('jevideas',{...i,status:v.status,note:v.note.trim(),videoUrl:v.videoUrl.trim()})},
+    onSave:async v=>{const ok=await save('jevideas',{...i,status:v.status,note:v.note.trim(),videoUrl:v.videoUrl.trim()});if(ok&&v.status==='publicada'&&i.status!=='publicada'){try{estBurst()}catch(_){}toast('¡Video publicado! 🎬')}},
     onDelete:()=>remove('jevideas',i.id),delLabel:'Eliminar idea'});
 }
 
@@ -185,7 +187,7 @@ function vJevInicio(){
   const ideas=jevIdeaSorted('').filter(i=>(i.status||'nueva')==='nueva'||i.status==='aprobada'||i.status==='produccion').slice(0,3);
   const inProd=jevIdeasAll().filter(i=>i.status==='produccion').length;
   const newIdeas=jevIdeasAll().filter(i=>(i.status||'nueva')==='nueva').length;
-  const head=`<div class="head"><div><h1>${greet}${first?', '+esc(first):''}</h1><p>${esc(fLong(TODAY).replace(/^./,c=>c.toUpperCase()))} · JEV+, Jóvenes En Victoria.</p></div></div>`;
+  const head=`<div class="head"><div><span class="gr" aria-hidden="true">ΝΙΚΗ</span><h1>${greet}${first?', '+esc(first):''}</h1><p>${esc(fLong(TODAY).replace(/^./,c=>c.toUpperCase()))} · JEV+, Jóvenes En Victoria.</p></div></div>`;
   const hero=next?`<section class="jv-hero"><div class="jv-hero-in">
       <span class="jv-tag">Lo que sigue</span>
       <h2>${esc(next.title)}</h2>
@@ -210,7 +212,7 @@ function vJevTu(){
     <section class="panel empty"><b>Tu perfil aún no está vinculado</b><p class="muted">Pídele a un líder que agregue tu correo en Equipo. Arca te reconoce automáticamente al iniciar sesión.</p></section>`;
   const mine=jevUpcoming().filter(a=>(a.crew||[]).includes(ME)||(a.going||[]).includes(ME));
   const myIdeas=jevIdeasAll().filter(i=>i.authorId===ME).sort((x,y)=>String(y.createdAt||'').localeCompare(String(x.createdAt||'')));
-  return `<div class="head"><div><h1>Hola, ${esc(jevFirst(ME))}</h1><p>Lo tuyo en JEV+.</p></div><div class="row"><button class="btn primary" data-jev="newidea">Mandar una idea</button></div></div>
+  return `<div class="head"><div><span class="gr" aria-hidden="true">ΝΕΑΝΙΣΚΟΙ</span><h1>Hola, ${esc(jevFirst(ME))}</h1><p>Lo tuyo en JEV+.</p></div><div class="row"><button class="btn primary" data-jev="newidea">Mandar una idea</button></div></div>
     <section class="panel"><div class="panel-h"><h2>Mis próximas actividades</h2></div>
       ${mine.length?`<div class="jv-stack tight">${mine.slice(0,5).map(a=>jevActCard(a)).join('')}</div>`:`<div class="empty" style="padding:18px"><p class="muted" style="margin:0">Nada por ahora. Mira las <a href="#actividades" data-go="actividades">actividades</a> y toca “Voy a ir”.</p></div>`}</section>
     <section class="panel"><div class="panel-h"><h2>Mis ideas de videos</h2></div>

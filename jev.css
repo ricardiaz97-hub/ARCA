@@ -146,3 +146,11 @@ html[data-space="jev"] .tcol,html[data-space="jev"] .tcol-m{background:#050A14}
   .jv-hero-in{padding:18px 16px}
 }
 @media (prefers-reduced-motion:reduce){.jv-vote,.jv-chips .chip,.spsw button{transition:none}}
+
+/* ---------- Texto griego decorativo y modo ligero ---------- */
+.head .gr{display:block;margin:0 0 4px;color:var(--acc-hi);opacity:.85}
+html.lite .jv-act,html.lite .jv-idea,html.lite .jv-stats>div{-webkit-backdrop-filter:none;backdrop-filter:none;background:linear-gradient(150deg,#0E1830,#08101F)}
+html.lite .jv-hero-in{background:#08142B}
+@media (prefers-reduced-transparency:reduce){
+  .jv-act,.jv-idea,.jv-stats>div{-webkit-backdrop-filter:none;backdrop-filter:none;background:linear-gradient(150deg,#0E1830,#08101F)}
+}
