@@ -552,6 +552,11 @@ img.avatar{object-fit:cover;background:var(--sunken)}
 .pcard.off{opacity:.55}
 .pmain{display:flex;align-items:center;gap:14px;padding:16px;background:none;border:0;text-align:left;cursor:pointer;font:inherit;color:inherit;width:100%}
 .pmain:hover{background:var(--sunken)}
+.perm-l{list-style:none;margin:12px 0 0;padding:0;display:grid;gap:6px}
+.perm-r{display:flex;align-items:center;gap:10px;padding:8px 10px;border:1px solid var(--line);border-radius:10px}
+.perm-r.adm{border-color:var(--acc);box-shadow:inset 3px 0 0 var(--acc)}
+.perm-n{flex:1;min-width:0;display:grid}.perm-n b,.perm-n span{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.perm-s{flex:none;max-width:46%}
 .pphoto{width:64px;height:64px;border-radius:50%;flex:none;object-fit:cover;display:inline-grid;place-items:center;color:#fff;font-stretch:62%;font-weight:900;font-size:1.5rem;box-shadow:0 0 0 2px var(--surface),0 0 0 3.5px var(--line-strong)}
 .pname{min-width:0;display:grid;gap:3px}
 .pname b{font-stretch:75%;font-weight:800;font-size:1.35rem;line-height:1.1;overflow-wrap:anywhere}
@@ -1316,6 +1321,35 @@ async function syncMember(email,alsoPhilly){
   if(alsoPhilly)rows.push({space:'philly',email:em,role:'member'});
   const {error}=await SB.from('arca_members').upsert(rows,{onConflict:'space,email',ignoreDuplicates:true});
   if(error){console.warn('membresía',error);toast('Guardé el perfil, pero no pude dar acceso a '+em+' ('+(error.code||'error')+'). Avísale a Ricardo.')}}
+/* Panel de permisos: el admin elige quién es Administrador o Servidor en el espacio activo.
+   Guarda en arca_members(space,email,role). Los admins fijos del código (APPROVERS en Philly) no se pueden bajar
+   desde aquí; al guardar se les asegura su fila de admin para que también puedan usar este panel. */
+async function openPermisos(){
+  if(!ADMIN())return;
+  if(!SPACES_OK){toast('Para usar Permisos primero hay que correr spaces.sql en Supabase.');return}
+  const {data,error}=await SB.from('arca_members').select('email,role').eq('space',SPACE);
+  if(error){toast('No pude leer los permisos ('+(error.code||'error')+').');return}
+  const roles=new Map((data||[]).map(r=>[norm(r.email).trim(),r.role]));
+  const fixed=p=>SPACE==='philly'&&APPROVERS.includes(p.id);
+  const list=sortBy(S.people.filter(p=>p.status!=='inactivo'),p=>p.name).map(p=>{const em=norm(p.email||'').trim();const ok=validEmail(em);
+    return {p,em,ok,fixed:fixed(p),me:p.id===ME,role:fixed(p)||roles.get(em)==='admin'?'admin':'member'}});
+  const pick=new Map();
+  const nAdm=list.filter(x=>x.role==='admin').length;
+  const rowHtml=x=>`<li class="perm-r${x.role==='admin'?' adm':''}">${avatar(x.p.id)}<span class="perm-n"><b>${esc(x.p.name)}</b><span class="small muted">${x.ok?esc(x.em):'Sin correo: agrégalo en su perfil'}</span></span>
+    ${x.fixed?'<span class="chip">Administrador · fijo</span>':x.me?'<span class="chip">Administrador · tú</span>':x.ok?`<select class="perm-s" data-em="${esc(x.em)}" aria-label="Permiso de ${esc(x.p.name)}"><option value="member"${x.role==='member'?' selected':''}>Servidor</option><option value="admin"${x.role==='admin'?' selected':''}>Administrador</option></select>`:'<span class="small muted">—</span>'}</li>`;
+  openForm({title:'Permisos · '+(SPACE_INFO[SPACE]?.name||SPACE),saveLabel:'Guardar permisos',fields:[],
+    intro:`<div class="info"><b>¿Qué puede hacer cada uno?</b><div><b>Administrador:</b> agrega y edita personas, canciones, servicios, actividades y tareas, aprueba solicitudes y cambia estos permisos.</div><div><b>Servidor:</b> usa Arca normalmente (sus turnos, tareas e ideas), pero no administra personas ni permisos.</div><div class="small muted" style="margin-top:6px">Hoy hay ${nAdm} administrador${nAdm===1?'':'es'}. El cambio se aplica cuando la persona vuelve a abrir Arca.</div></div>
+      <ul class="perm-l">${list.map(rowHtml).join('')}</ul>`,
+    onSave:async()=>{
+      const rows=[...pick].filter(([em,role])=>(roles.get(em)==='admin'?'admin':'member')!==role).map(([email,role])=>({space:SPACE,email,role}));
+      list.filter(x=>(x.fixed||x.me)&&x.ok&&roles.get(x.em)!=='admin').forEach(x=>rows.push({space:SPACE,email:x.em,role:'admin'}));
+      if(!rows.length){toast('No cambiaste ningún permiso.');return}
+      const {error}=await SB.from('arca_members').upsert(rows,{onConflict:'space,email'});
+      if(error){toast('No pude guardar los permisos ('+(error.code||'error')+'). Avísale a Ricardo.');return}
+      const n=[...pick].filter(([em,role])=>(roles.get(em)==='admin'?'admin':'member')!==role).length;
+      toast(n?`Listo: ${n} permiso${n===1?'':'s'} cambiado${n===1?'':'s'}.`:'Listo.')}});
+  setTimeout(()=>document.querySelectorAll('#drawerForm .perm-s').forEach(sel=>sel.onchange=()=>{pick.set(sel.dataset.em,sel.value);sel.closest('.perm-r').classList.toggle('adm',sel.value==='admin')}),0);
+}
 async function dropMember(email){
   if(!SPACES_OK||SPACE==='philly'||!ADMIN()||!validEmail(email))return;
   const {error}=await SB.from('arca_members').delete().eq('space',SPACE).eq('email',norm(email).trim());
@@ -3114,7 +3148,7 @@ function vPersonas(){
   const card=p=>{const ph=String(p.phone||'').replace(/\D/g,'');const wa=ph?(ph.length===8?'503'+ph:ph):'';
     return `<li class="pcard ${p.pin?'pkey':''} ${p.status==='inactivo'?'off':''}"><button class="pmain" data-person="${p.id}" aria-label="Abrir perfil de ${esc(p.name)}">${big(p)}<span class="pname">${p.pin&&p.keyRole?`<span class="krole">${esc(p.keyRole)}</span>`:''}<b>${esc(p.name)}</b>${(p.titles||[]).length?`<span class="ptitles">${esc(p.titles.join(' · '))}</span>`:''}${p.status==='inactivo'?'<span class="ptitles">Inactivo</span>':''}</span></button>
       <div class="pinfo">${p.phone?`<a href="tel:${esc(ph)}"><span class="lbl">Tel.</span>${esc(p.phone)}</a>`:''}${wa?`<a href="https://wa.me/${wa}" target="_blank" rel="noopener"><span class="lbl">WhatsApp</span>Escribir</a>`:''}${p.email?`<a href="mailto:${esc(p.email)}"><span class="lbl">Correo</span>${esc(p.email)}</a>`:''}${bd(p)?`<span><span class="lbl">Cumpleaños</span>${esc(bd(p))}</span>`:''}${!p.phone&&!p.email&&!bd(p)?'<span class="muted">Sin datos de contacto todavía</span>':''}</div></li>`};
-  return `<div class="head"><div><h1>Personas</h1><p>${S.people.length} en el directorio.</p></div><div class="row"><input type="search" id="peopleSearch" class="search" placeholder="Buscar por nombre o título…" value="${esc(ui.q)}" aria-label="Buscar personas">${ADMIN()&&SPACE!=='philly'&&SPACES.includes('philly')?`<button class="btn" data-jev="import">Traer de Philly</button>`:''}${ADMIN()?`<button class="btn primary" data-act="newPerson">Agregar persona</button>`:''}</div></div>
+  return `<div class="head"><div><h1>Personas</h1><p>${S.people.length} en el directorio.</p></div><div class="row"><input type="search" id="peopleSearch" class="search" placeholder="Buscar por nombre o título…" value="${esc(ui.q)}" aria-label="Buscar personas">${ADMIN()&&SPACE!=='philly'&&SPACES.includes('philly')?`<button class="btn" data-jev="import">Traer de Philly</button>`:''}${ADMIN()?`<button class="btn" data-act="permisos">Permisos</button><button class="btn primary" data-act="newPerson">Agregar persona</button>`:''}</div></div>
     ${invitePanel()}${S.people.length?(list.length?(()=>{const keys=q?[]:sortBy(list.filter(p=>Number(p.pin)>0),p=>String(p.pin).padStart(3,'0'));const rest=q?list:list.filter(p=>!(Number(p.pin)>0));
       return (keys.length?`<h2 class="psec">Contactos principales</h2><p class="muted" style="margin:-4px 0 12px">Si tienes una duda, escríbele a ellos.</p><ul class="pgrid pkeys">${keys.map(card).join('')}</ul><h2 class="psec" style="margin-top:28px">Todo el equipo</h2>`:'')+`<ul class="pgrid">${rest.map(card).join('')}</ul>`})():`<section class="panel empty">Nadie coincide con “${esc(ui.q)}”.</section>`):'<section class="panel empty"><b>El directorio está vacío</b>Agrega a los miembros y voluntarios para poder programarlos.</section>'}`;
 }
@@ -3478,6 +3512,7 @@ document.addEventListener('click',async e=>{
     case 'svcTask':return editTask({},{serviceId:svc.id,due:addDays(svc.date,-1)});
     case 'newSong':return openSongWizard();
     case 'newPerson':return ADMIN()?editPerson():null;
+    case 'permisos':return openPermisos();
     case 'newTeam':return ADMIN()?editTeam():null;
     case 'newEvent':if(!ADMIN())return;return editEvent({},ui.month.getMonth()===now.getMonth()?TODAY:iso(ui.month));
     case 'newTask':return editTask();
