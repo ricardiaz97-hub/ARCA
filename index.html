@@ -2154,13 +2154,13 @@ function tellLead(s){const me=byId('people',ME);if(!me)return '';
   const d=parse(s.date);const fecha=`${LDOW[d.getDay()]} ${d.getDate()} de ${d.toLocaleDateString('es',{month:'long'})}`;
   const msg=`⚠️ ${me.name.split(/\s+/)[0]} no podrá ir el ${fecha} a las ${ampm(s.time)} (${s.title})${roles?'. Le tocaba '+roles:''}.\n\n¿Alguien puede cubrir? 🙏\n${ARCA_URL}`;
   return `<a class="tb wide" style="text-decoration:none;text-align:center;display:block" href="https://wa.me/?text=${encodeURIComponent(msg)}" target="_blank" rel="noopener">Avisar al grupo de Philly por WhatsApp</a><p class="small" style="margin:6px 0 0">Se abre WhatsApp: elige el chat del grupo y envía.</p>`}
-const ARCA_URL='https://Arca/artifact/Nua9H73D47jHEw4umWHtcZ';
+const ARCA_URL='https://arca-tau-steel.vercel.app';
 const waNum=p=>{const ph=String(p&&p.phone||'').replace(/\D/g,'');return ph?(ph.length===8?'503'+ph:ph):''};
 function waAssign(s,a,big){const p=a&&a.personId&&byId('people',a.personId);if(!p||a.status==='declinado')return '';
   const first=p.name.split(/\s+/)[0];const d=parse(s.date);
   const role=rolesOf(s,a.personId)||'servir';
   const fecha=`${LDOW[d.getDay()]} ${d.getDate()} de ${d.toLocaleDateString('es',{month:'long'})}`;
-  const msg=`Hola ${first} 👋 Te toca ${role} el ${fecha} a las ${ampm(s.time)} (${s.title}).\n\n¿Me confirmas en Arca? Entra a tu pestaña "Tú" y toca "Sí, confirmo":\n${ARCA_URL}\n\n(Si te sale como invitado y no te deja confirmar, mantén presionado el link y ábrelo en Safari o Chrome, donde tienes tu sesión de Claude, o ábrelo desde la app de Arca.)\n\n¡Dios te bendiga!`;
+  const msg=`Hola ${first} 👋 Te toca ${role} el ${fecha} a las ${ampm(s.time)} (${s.title}).\n\n¿Me confirmas en Arca? Entra a tu pestaña "Tú" y toca "Sí, confirmo":\n${ARCA_URL}\n\n(Inicia sesión con el correo de tu cuenta de Arca. Si ya la instalaste en tu teléfono, ábrela desde ahí.)\n\n¡Dios te bendiga!`;
   const num=waNum(p);
   return `<a class="${big?'btn sm':'wa-b'}" href="https://wa.me/${num}?text=${encodeURIComponent(msg)}" target="_blank" rel="noopener" aria-label="Avisar a ${esc(first)} por WhatsApp" title="${num?'Avisar a '+esc(first)+' por WhatsApp':'Sin teléfono guardado: elegirás el contacto en WhatsApp'}">Avisar</a>`}
 function waBtn(p){const first=p.name.split(/\s+/)[0];const msg=`¡Feliz cumpleaños, ${first}! 🎉 De parte de todo el equipo de Philly: que Dios te bendiga grandemente en este nuevo año de vida. ¡Te queremos!`;
