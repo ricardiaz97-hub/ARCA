@@ -17,7 +17,7 @@
   .rail .spsw{display:none}
   .mbar .spsw{display:flex;margin:0 0 0 auto}
   .spsw button{padding:6px 10px;font-size:.72rem}
-  html[data-space="jev"] .rail{grid-template-columns:repeat(6,minmax(0,1fr))!important}
+  html[data-space="jev"] .rail{grid-template-columns:repeat(7,minmax(0,1fr))!important}
 }
 
 /* ---------- Tema verde neón y azul ---------- */
@@ -161,3 +161,38 @@ html.lite .jv-hero-in{background:#08142B}
 .jv-myph img,.jv-myph>span{width:100%;height:100%;object-fit:cover;display:grid;place-items:center;font-weight:900;font-size:1.5rem;color:#04120A}
 .jv-myph i{position:absolute;inset:auto 0 0 0;font:700 .62rem/1 inherit;font-style:normal;text-align:center;padding:5px 0;background:rgba(4,7,15,.72);color:var(--acc-hi);letter-spacing:.04em;text-transform:uppercase}
 .jv-myph:focus-within{outline:2px solid var(--acc-hi);outline-offset:3px}
+
+.jevlogo-img{display:block;width:100%;max-width:200px;height:auto}
+.jevlogo.sm .jevlogo-img{width:auto;height:30px;max-width:none}
+.rail .brand .jevlogo-img{padding:6px 4px 2px}
+
+/* Asignaciones, escaletas, cumpleaños y pines */
+.jv-roles{display:flex;flex-wrap:wrap;gap:6px;margin:8px 0 0}
+.jv-role{display:inline-flex;gap:6px;align-items:center;border:1px solid var(--line,#1B2A44);border-radius:999px;padding:3px 10px;font-size:.8rem;background:rgba(47,123,255,.08)}
+.jv-role b{color:var(--acc);font-weight:600}
+.jv-role.me{border-color:var(--acc);background:rgba(57,255,136,.12)}
+.sc-card{display:flex;gap:12px;align-items:center;justify-content:space-between;padding:14px;border:1px solid var(--line,#1B2A44);border-radius:14px;background:var(--card,#0B1424);margin:8px 0}
+.sc-card h3{margin:0 0 2px}
+.sc-list{list-style:none;margin:12px 0;padding:0;display:grid;gap:8px}
+.sc-item{display:grid;grid-template-columns:76px 1fr auto;gap:10px;align-items:start;border:1px solid var(--line,#1B2A44);border-radius:12px;padding:10px 12px;background:var(--card,#0B1424)}
+.sc-time{font-weight:700;color:var(--acc);font-variant-numeric:tabular-nums;line-height:1.2}
+.sc-time small{display:block;color:var(--mut,#8DA0C0);font-weight:500}
+.sc-item h4{margin:0;font-size:1rem}
+.sc-who{font-size:.85rem;color:var(--blue-hi,#6FA3FF)}
+.sc-ctl{display:flex;gap:4px}
+.sc-ctl button{min-width:34px;min-height:34px}
+.cm-nav{display:flex;gap:8px;align-items:center;justify-content:space-between;margin:10px 0}
+.cm-grid{display:grid;grid-template-columns:repeat(7,1fr);gap:4px}
+.cm-dow{font-size:.7rem;text-align:center;color:var(--mut,#8DA0C0);text-transform:uppercase}
+.cm-day{min-height:58px;border:1px solid var(--line,#1B2A44);border-radius:10px;padding:4px 5px;font-size:.78rem;background:var(--card,#0B1424);overflow:hidden}
+.cm-day.out{opacity:.35}
+.cm-day.today{border-color:var(--acc);box-shadow:0 0 12px rgba(57,255,136,.35)}
+.cm-day.has{background:rgba(57,255,136,.08)}
+.cm-day i{display:block;font-style:normal;font-size:.68rem;line-height:1.15;color:var(--acc);word-break:break-word}
+.cm-banner{display:flex;gap:10px;align-items:center;border:1px solid var(--acc);background:rgba(57,255,136,.1);border-radius:14px;padding:12px 14px;margin:0 0 14px}
+.jv-pins{display:flex;flex-wrap:wrap;gap:8px;margin:8px 0 0;align-items:center}
+.jv-pin{display:inline-flex;gap:6px;align-items:center;border:1px solid #E60023;color:#ff8da1;border-radius:999px;padding:3px 10px;font-size:.8rem;text-decoration:none}
+.jv-pinbox{margin:10px 0;display:flex;flex-wrap:wrap;gap:12px}
+@media print{.sc-ptitle{display:block!important;margin:0 0 8px}body *{visibility:hidden}.sc-print,.sc-print *{visibility:visible}.sc-print{position:absolute;left:0;top:0;width:100%;color:#000;background:#fff}.sc-print .sc-item{border:1px solid #999;background:#fff}.sc-print .sc-time{color:#000}.sc-print .sc-ctl,.no-print{display:none!important}}
+@media (max-width:640px){.cm-day{min-height:48px;padding:3px}.sc-item{grid-template-columns:62px 1fr}.sc-ctl{grid-column:1/-1;justify-content:flex-end}}
+.sc-ptitle{display:none}

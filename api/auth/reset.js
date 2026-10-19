@@ -1,9 +1,9 @@
-// Ricardo o Andrés atienden una solicitud de contraseña olvidada:
+// Un administrador del espacio (Ricardo/Andrés en Philly, líderes en JEV+) atiende una solicitud de contraseña olvidada:
 //  action "reset"   → crea una contraseña temporal (y la cuenta, si no existía) y la devuelve UNA vez.
 //  action "dismiss" → descarta la solicitud.
 import crypto from 'node:crypto';
 import { supabaseAdmin, upsertRecord } from '../../lib/supabase-admin.js';
-import { requireApprover } from '../../lib/arca-admins.js';
+import { requireSpaceAdmin } from '../../lib/arca-admins.js';
 
 async function findUserByEmail(sb, email) {
   for (let page = 1; page <= 20; page++) {
@@ -23,14 +23,15 @@ function tempPassword() {
 export default async function handler(req, res) {
   if (req.method !== 'POST') return res.status(405).json({ error: 'method_not_allowed' });
   try {
-    const admin = await requireApprover(req, res); if (!admin) return;
+    const space = String(req.body?.space || 'philly');
+    const admin = await requireSpaceAdmin(req, res, space); if (!admin) return;
     const id = String(req.body?.id || ''), action = String(req.body?.action || 'reset');
     const sb = supabaseAdmin();
-    const { data: rec, error } = await sb.from('arca_records').select('id,data').eq('collection', 'pwresets').eq('id', id).maybeSingle();
+    const { data: rec, error } = await sb.from('arca_records').select('id,data').eq('collection', 'pwresets').eq('space', space).eq('id', id).maybeSingle();
     if (error) throw error;
     if (!rec) return res.status(404).json({ error: 'not_found', message: 'La solicitud ya no existe.' });
     const email = String(rec.data?.email || '').toLowerCase();
-    const done = extra => upsertRecord(sb, 'pwresets', id, { ...rec.data, ...extra, resolvedBy: admin.email, resolvedAt: new Date().toISOString() });
+    const done = extra => upsertRecord(sb, 'pwresets', id, { ...rec.data, ...extra, resolvedBy: admin.email, resolvedAt: new Date().toISOString() }, space);
 
     if (action === 'dismiss') { const { error: e } = await done({ status: 'descartada' }); if (e) throw e; return res.json({ ok: true }); }
 
@@ -46,6 +47,10 @@ export default async function handler(req, res) {
     }
     const { error: e3 } = await done({ status: 'resuelta' });
     if (e3) throw e3;
+    // Si la misma persona pidió también en otro espacio, esa solicitud ya quedó atendida.
+    const { data: twins } = await sb.from('arca_records').select('id,space,data').eq('collection', 'pwresets').neq('space', space);
+    for (const t of (twins || [])) if (t.data?.status === 'pendiente' && t.data?.email === email)
+      await upsertRecord(sb, 'pwresets', t.id, { ...t.data, status: 'resuelta', resolvedBy: admin.email, resolvedAt: new Date().toISOString() }, t.space);
     // La contraseña no se guarda en ningún lado: solo se devuelve aquí para enviarla.
     res.json({ ok: true, email, password, created });
   } catch (e) { console.error(e); res.status(500).json({ error: 'reset_failed', message: e.message }); }

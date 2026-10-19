@@ -33,5 +33,13 @@ y dice exactamente qué falta. No muestra ningún secreto.
 2. Ricardo queda como admin de `philly` y `jev`. Para agregar admins o jóvenes: en Arca → JEV+ → Equipo → Agregar persona (con su correo). Eso les da acceso solo a JEV+; para que sigan en Philly, elige “JEV+ y Philly”.
 3. Más detalles en `CLAUDE.md`.
 
+## Cerrar el acceso heredado a Philly
+1. Publica la versión nueva de la app (funciona igual antes y después del SQL).
+2. **Supabase → SQL Editor**: ejecuta `cerrar-acceso.sql` una vez. Da su membresía a cada persona de Philly/JEV+ con correo y apaga el acceso automático a Philly.
+3. Si el script se detiene con “Estas cuentas se quedarían sin acceso: …”, agrega esos correos a `arca_members` (o borra esas cuentas) y vuelve a correrlo.
+
+## Unirse a JEV+
+Comparte `https://TU-DOMINIO/unirse.html`. Las solicitudes llegan a JEV+ → Tú → “Solicitudes para unirse”.
+
 ## Límite
 Vercel no acepta subidas de más de 4.5 MB por petición; Arca avisa si un archivo pasa de 4 MB.
