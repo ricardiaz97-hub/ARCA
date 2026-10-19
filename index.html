@@ -1148,7 +1148,7 @@ async function connectDrive(){
   catch(e){toast('No se pudo iniciar Google Drive: '+e.message+' — revisa /api/drive/diagnose')}}
 function driveReturnNotice(){const q=new URLSearchParams(location.search);if(q.get('drive')!=='connected')return;toast('✓ Google Drive conectado. Los archivos se guardarán en la carpeta Arca.');q.delete('drive');history.replaceState(null,'',location.pathname+(q.toString()?'?'+q:'')+location.hash)}
 /* ---------- constants ---------- */
-const COLS=['people','teams','songs','services','events','projects','tasks','recurring','settings','requests','devos','devoviews','devocomments','setlists','pwresets','eventos','jevacts','jevideas'];
+const COLS=['people','teams','songs','services','events','projects','tasks','recurring','settings','requests','devos','devoviews','devocomments','setlists','pwresets','eventos','jevacts','jevideas','jevscaletas','jevbdays'];
 const S={}; COLS.forEach(c=>S[c]=[]);
 const ICON={
   inicio:'<path d="M3 10.5 12 3l9 7.5V20a1 1 0 0 1-1 1h-5v-6H9v6H4a1 1 0 0 1-1-1z"/>',
@@ -1162,7 +1162,7 @@ const ICON={
   alabanzas:'<path d="M9 18V5.5l11-2.5v12.5"/><circle cx="6.5" cy="18" r="2.5"/><circle cx="17.5" cy="15.5" r="2.5"/>'
 };
 const NAV_PHILLY=[['turno','Tú'],['inicio','Inicio'],['servicios','Servicios'],['alabanzas','Alabanzas'],['personas','Personas'],['equipos','Equipos'],['calendario','Calendario'],['tareas','Tareas'],['devocionales','Devocionales']];
-const NAV_JEV=[['turno','Tú'],['inicio','Inicio'],['actividades','Actividades'],['ideas','Ideas'],['personas','Equipo'],['tareas','Tareas']];
+const NAV_JEV=[['turno','Tú'],['inicio','Inicio'],['actividades','Actividades'],['ideas','Ideas'],['cumples','Cumples'],['personas','Equipo'],['tareas','Tareas']];
 const navList=()=>SPACE==='jev'?NAV_JEV:NAV_PHILLY;
 const NAV=NAV_PHILLY;
 const TASK_ST=[['todo','Por hacer'],['doing','En curso'],['review','Por revisar'],['done','Hecho']];

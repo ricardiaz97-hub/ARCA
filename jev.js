@@ -15,6 +15,7 @@ const JEV_STATE=Object.fromEntries(JEV_STATES);
 try{
   ICON.actividades='<rect x="3.5" y="5" width="17" height="15" rx="2"/><path d="M3.5 10h17M8 3v4M16 3v4"/><path d="m9.5 15 1.8 1.8L15 13"/>';
   ICON.ideas='<rect x="3" y="5" width="13" height="14" rx="2"/><path d="m16 10 5-3v10l-5-3"/><path d="M9.5 9.2v5.6M6.7 12h5.6"/>';
+  ICON.cumples='<path d="M4 20h16v-6a2 2 0 0 0-2-2H6a2 2 0 0 0-2 2z"/><path d="M12 12V9M12 9c-1 0-1.5-1-1.5-1.8S12 5.5 12 5.5s1.5.9 1.5 1.7S13 9 12 9z"/><path d="M4 16c2 1.5 4 1.5 6 0s4-1.5 6 0 2.5 1 4 0"/>';
 }catch(_){}
 
 const jevAll=()=>S.jevacts||[];
@@ -62,7 +63,7 @@ function jevInstallIdentity(space){
 /* ---------- Qué pantalla toca en cada ruta ---------- */
 function spaceView(space,route){
   if(space!=='jev')return null;
-  return {turno:vJevTu,inicio:vJevInicio,actividades:vJevActs,ideas:vJevIdeas}[route]||null;
+  return {turno:vJevTu,inicio:vJevInicio,actividades:vJevActs,ideas:vJevIdeas,cumples:vJevCumples,escaleta:vJevEscaleta}[route]||null;
 }
 
 /* ---------- Tarjeta de actividad ---------- */
@@ -76,10 +77,13 @@ function jevActCard(a,{past=false}={}){
       <h3>${esc(a.title)}</h3>
       <p class="jv-sub">${[a.time?jevTime(a.time):'',a.place].filter(Boolean).map(esc).join(' · ')}</p>
       ${a.notes?`<p class="jv-notes">${esc(a.notes)}</p>`:''}
+      ${jevRolesHtml(a)}
       ${crew.length?`<div class="jv-crew"><span class="lbl">Sirven</span><span class="jv-faces">${crew.map(id=>jevFace(id)).join('')}</span><span class="jv-names">${crew.map(jevFirst).map(esc).join(', ')}</span></div>`:''}
       <div class="jv-foot">
         ${!past&&ME?`<button class="btn sm ${iGo?'primary':''}" data-jev="go" data-id="${esc(a.id)}" aria-pressed="${!!iGo}">${iGo?'✓ Voy':'Voy a ir'}</button>`:''}
         ${going.length?`<span class="small muted">${going.length} ${going.length===1?'confirmó':'confirmaron'}</span>`:''}
+        ${jevMgr()&&!past?`<button class="btn sm" data-jev="assign" data-id="${esc(a.id)}">Asignaciones</button>`:''}
+        ${jevScFor(a.id)?`<button class="btn sm" data-jev="opensc" data-id="${esc(jevScFor(a.id).id)}">Ver escaleta</button>`:(jevMgr()?`<button class="btn sm" data-jev="newsc" data-id="${esc(a.id)}">Armar escaleta</button>`:'')}
         ${jevMgr()?`<button class="btn ghost sm" data-jev="editact" data-id="${esc(a.id)}">Editar</button>`:''}
       </div>
     </div>
@@ -97,6 +101,7 @@ function vJevActs(){
     <div class="row">${jevMgr()?'<button class="btn primary" data-jev="newact">Nueva actividad</button>':''}</div></div>
     ${chips}
     ${list.length?`<div class="jv-stack">${list.map(a=>jevActCard(a)).join('')}</div>`:`<section class="panel empty"><b>${up.length?'No hay actividades de ese tipo.':'Todavía no hay actividades.'}</b><p class="muted">${jevMgr()?'Toca “Nueva actividad” para agregar el próximo culto.':'Cuando los líderes agreguen el próximo culto, aparecerá aquí.'}</p></section>`}
+    ${jevScList()}
     ${past.filter(keep).length?`<details class="tcard tfold jv-past"><summary><h2 class="th2">Anteriores</h2><p class="small">${past.filter(keep).length} reciente${past.filter(keep).length===1?'':'s'}</p></summary><div class="jv-stack">${past.filter(keep).map(a=>jevActCard(a,{past:true})).join('')}</div></details>`:''}`;
 }
 
@@ -138,6 +143,7 @@ function jevIdeaCard(i){
       ${votes.length?`<span class="sparks" role="img" aria-label="${votes.length} ${votes.length===1?'voto':'votos'}: ${jevSparks(votes.length)} de 5 destellos">${[0,1,2,3,4].map(k=>`<i class="${k<jevSparks(votes.length)?'on':''}"></i>`).join('')}</span>`:''}
       ${i.desc?`<p class="jv-notes">${esc(i.desc)}</p>`:''}
       ${isUrl(i.ref)?`<a class="jv-link" href="${esc(i.ref)}" target="_blank" rel="noopener">Ver referencia ↗</a>`:''}
+      ${jevPinsHtml(i)}
       ${st==='publicada'&&isUrl(i.videoUrl)?`<a class="btn primary sm" href="${esc(i.videoUrl)}" target="_blank" rel="noopener">▶ Ver el video</a>`:''}
       ${i.note?`<p class="jv-lnote"><span class="lbl">Líderes</span>${esc(i.note)}</p>`:''}
       <div class="jv-foot">
@@ -157,20 +163,22 @@ function vJevIdeas(){
     <div class="row">${ME?'<button class="btn primary" data-jev="newidea">Mandar una idea</button>':''}</div></div>
     ${ME?'':'<div class="info warn" role="alert"><b>Tu perfil aún no está vinculado.</b> Pídele a un líder que agregue tu correo en Equipo para poder mandar ideas.</div>'}
     ${chips}
-    ${list.length?`<div class="jv-stack">${list.map(jevIdeaCard).join('')}</div>`:`<section class="panel empty"><b>${jevIdeasAll().length?'No hay ideas en este estado.':'Aún no hay ideas. ¡Sé el primero!'}</b><p class="muted">Un reto, un testimonio, un sketch, un tutorial… lo que Dios ponga en tu corazón.</p></section>`}`;
+    ${list.length?`<div class="jv-stack">${list.map(jevIdeaCard).join('')}</div>`:`<section class="panel empty"><b>${jevIdeasAll().length?'No hay ideas en este estado.':'Aún no hay ideas. ¡Sé el primero!'}</b><p class="muted">Un reto, un testimonio, un sketch, un tutorial… lo que Dios ponga en tu corazón.</p></section>`}${(setTimeout(jevLoadPins,60),'')}`;
 }
 
 function jevEditIdea(i={}){
   openForm({title:i.id?'Editar mi idea':'Mandar una idea de video',saveLabel:i.id?'Guardar':'Enviar idea',
-    intro:i.id?'':'<div class="info gold"><b>Una idea clara se graba más rápido</b><span>Cuéntanos de qué trata, a quién le habla y, si tienes, un video parecido como referencia.</span></div>',
+    intro:i.id?'':'<div class="info gold"><b>Una idea clara se graba más rápido</b><span>Cuéntanos de qué trata, a quién le habla y, si tienes, un video parecido como referencia. ¿Te inspiró algo en Pinterest? Guarda el pin y pega aquí su link (si no la tienes, <a href="https://www.pinterest.com/download/" target="_blank" rel="noopener">descárgala</a>).</span></div>',
     fields:[
     {id:'title',label:'Título de la idea',value:i.title,required:true,ph:'Ej.: “3 cosas que aprendí en mi primer año sirviendo”'},
     {id:'desc',label:'¿De qué trata?',type:'textarea',value:i.desc,ph:'Qué se vería, quién saldría, qué queremos que sienta quien lo vea…'},
-    {id:'ref',label:'Video de referencia (opcional)',type:'url',value:i.ref,ph:'https://www.youtube.com/…'}],
+    {id:'ref',label:'Video de referencia (opcional)',type:'url',value:i.ref,ph:'https://www.youtube.com/…'},
+    {id:'pins',label:'Pines de Pinterest (uno por línea)',type:'textarea',value:(i.pins||[]).join('\n'),ph:'https://pin.it/… o https://www.pinterest.com/pin/…'}],
     onSave:async v=>{
       if(!v.title.trim()){toast('Ponle un título a tu idea.');return}
       if(v.ref&&!isUrl(v.ref)){toast('El link de referencia no parece válido.');return}
-      const id=await save('jevideas',{status:'nueva',votes:i.id?(i.votes||[]):[ME],...i,title:v.title.trim(),desc:v.desc.trim(),ref:v.ref.trim(),authorId:i.authorId||ME,createdAt:i.createdAt||new Date().toISOString()});
+      const pr=jevParsePins(v.pins);if(pr.bad.length){toast('Este link no parece de Pinterest: '+pr.bad[0]);return}
+      const id=await save('jevideas',{status:'nueva',votes:i.id?(i.votes||[]):[ME],...i,title:v.title.trim(),desc:v.desc.trim(),ref:v.ref.trim(),pins:pr.ok,authorId:i.authorId||ME,createdAt:i.createdAt||new Date().toISOString()});
       if(id&&!i.id)toast('¡Gracias! Tu idea ya la pueden votar.')},
     onDelete:i.id&&(i.authorId===ME||jevMgr())?()=>remove('jevideas',i.id):null});
 }
@@ -211,9 +219,9 @@ function vJevInicio(){
     ${ideas.length?`<div class="jv-stack tight">${ideas.map(jevIdeaCard).join('')}</div>`:`<div class="empty" style="padding:18px"><p class="muted" style="margin:0 0 10px">Todavía no hay ideas.</p>${ME?'<button class="btn primary" data-jev="newidea">Mandar la primera</button>':''}</div>`}</section>`;
   const more=up.slice(1,4);
   const actPanel=more.length?`<section class="panel"><div class="panel-h"><h2>Más adelante</h2><button class="btn ghost sm" data-go="actividades">Ver todas</button></div><ul class="list">${more.map(a=>`<li class="click" data-go="actividades"><span class="jv-mini-d"><b>${parse(a.date).getDate()}</b><small>${esc(parse(a.date).toLocaleDateString('es',{month:'short'}).replace('.',''))}</small></span><span class="grow"><b>${esc(a.title)}</b><br><span class="small muted">${[JEV_KIND[a.kind],a.time?jevTime(a.time):''].filter(Boolean).map(esc).join(' · ')}</span></span></li>`).join('')}</ul></section>`:'';
-  const birthdays=(()=>{const m=now.getMonth()+1;const L=S.people.filter(p=>p.birth&&Number(String(p.birth).slice(5,7))===m&&p.status!=='inactivo').sort((a,b)=>String(a.birth).slice(8).localeCompare(String(b.birth).slice(8)));
-    return L.length?`<section class="panel"><div class="panel-h"><h2>Cumpleaños del mes 🎂</h2></div><ul class="list">${L.map(p=>`<li><span>${jevFace(p.id)}</span><span class="grow"><b>${esc(p.name)}</b></span><span class="small muted">${Number(String(p.birth).slice(8))} de ${esc(parse('2000-'+String(p.birth).slice(5)).toLocaleDateString('es',{month:'long'}))}</span></li>`).join('')}</ul></section>`:''})();
-  return head+hero+stats+`<div class="grid2"><div class="stack">${ideaPanel}</div><div class="stack">${actPanel}${birthdays}</div></div>`;
+  const birthdays=(()=>{const m=now.getMonth()+1;const L=jevBirthdays().filter(b=>Number(b.md.slice(0,2))===m).sort((a,b)=>a.md.localeCompare(b.md));
+    return L.length?`<section class="panel"><div class="panel-h"><h2>Cumpleaños del mes 🎂</h2><button class="btn ghost sm" data-go="cumples">Calendario</button></div><ul class="list">${L.map(b=>`<li><span>${b.pid?jevFace(b.pid):'<span class="jv-face bg'+colorOf(b.key)+'">'+esc(initials(b.name))+'</span>'}</span><span class="grow"><b>${esc(b.name)}</b></span><span class="small muted">${Number(b.md.slice(3))} de ${esc(parse('2000-'+b.md).toLocaleDateString('es',{month:'long'}))}</span></li>`).join('')}</ul></section>`:''})();
+  return head+jevBdayBanner()+hero+stats+`<div class="grid2"><div class="stack">${ideaPanel}</div><div class="stack">${actPanel}${birthdays}</div></div>`;
 }
 
 /* ---------- Tú ---------- */
@@ -228,6 +236,7 @@ function vJevTu(){
       ${mine.length?`<div class="jv-stack tight">${mine.slice(0,5).map(a=>jevActCard(a)).join('')}</div>`:`<div class="empty" style="padding:18px"><p class="muted" style="margin:0">Nada por ahora. Mira las <a href="#actividades" data-go="actividades">actividades</a> y toca “Voy a ir”.</p></div>`}</section>
     <section class="panel"><div class="panel-h"><h2>Mis ideas de videos</h2></div>
       ${myIdeas.length?`<div class="jv-stack tight">${myIdeas.map(jevIdeaCard).join('')}</div>`:`<div class="empty" style="padding:18px"><p class="muted" style="margin:0">Todavía no has mandado ninguna.</p></div>`}</section>
+    ${jevMyRoles()}
     ${reqPanel()}${pwPanel()}
     <p class="small center" style="margin-top:18px"><button class="linkb" data-person="${esc(ME)}">Ver mi perfil</button> · <button class="linkb" data-mypw>Cambiar mi contraseña</button> · <button class="linkb" data-logout>Cerrar sesión</button></p>`;
 }
@@ -287,4 +296,213 @@ document.addEventListener('click',e=>{
   if(k==='editidea'){const i=byId('jevideas',id);if(i&&(i.authorId===ME||jevMgr()))jevEditIdea(i);return}
   if(k==='status'){const i=byId('jevideas',id);if(i&&jevMgr())jevEditStatus(i);return}
   if(k==='vote')return jevToggleVote(id);
+  if(k==='assign'){const a=byId('jevacts',id);if(a&&jevMgr())jevAssign(a);return}
+  if(k==='newsc')return jevNewSc(id);
+  if(k==='opensc'){ui.jevScId=id;go('escaleta');return}
+  if(k==='scback'){go('actividades');return}
+  if(k==='scmeta'){const sc=byId('jevscaletas',id);if(sc&&jevMgr())jevEditScMeta(sc);return}
+  if(k==='scadd'){const sc=byId('jevscaletas',id);if(sc&&jevMgr())jevEditScItem(sc);return}
+  if(k==='scedit'){const sc=byId('jevscaletas',id);const it=sc&&(sc.items||[]).find(x=>x.id===b.dataset.item);if(it&&jevMgr())jevEditScItem(sc,it);return}
+  if(k==='scmove')return jevScMove(id,b.dataset.item,Number(b.dataset.d));
+  if(k==='sctpl'){const sc=byId('jevscaletas',id);if(sc&&jevMgr())jevScTemplate(sc);return}
+  if(k==='sccopy')return jevScCopy(id);
+  if(k==='scprint'){window.print();return}
+  if(k==='newbday'){jevEditBday();return}
+  if(k==='editbday'){const x=byId('jevbdays',id);if(x)jevEditBday(x);return}
+  if(k==='cmmove'){ui.jevCm=(ui.jevCm||0)+Number(b.dataset.d);return render()}
+  if(k==='cmnow'){ui.jevCm=0;return render()}
+  if(k==='bdayics')return jevBdayIcs();
+  if(k==='addpin'){const i=byId('jevideas',id);if(i)jevAddPin(i);return}
+  if(k==='showpins'){ui.jevPins=ui.jevPins||{};ui.jevPins[id]=!ui.jevPins[id];return render()}
 },true);
+
+
+/* =====================================================================
+   Asignaciones por servicio · Escaletas · Cumpleaños · Pines de Pinterest
+   ===================================================================== */
+
+/* ---------- Asignaciones por servicio ---------- */
+const JEV_ROLES=['Bienvenida','Alabanza','Oración','Dinámica','Mensaje','Sonido','Proyección','Fotos y redes'];
+const jevRolesOf=a=>(Array.isArray(a.roles)?a.roles:[]).filter(r=>r&&r.role&&byId('people',r.personId));
+function jevRolesHtml(a){
+  const L=jevRolesOf(a);if(!L.length)return '';
+  return `<div class="jv-roles" aria-label="Asignaciones">${L.map(r=>`<span class="jv-role ${r.personId===ME?'me':''}">${esc(r.role)} <b>${esc(jevFirst(r.personId))}</b></span>`).join('')}</div>`}
+function jevAssign(a){
+  const opts=peopleOpts('— Nadie —'),cur=jevRolesOf(a);
+  const who=role=>(cur.find(r=>r.role===role)||{}).personId||'';
+  const extras=cur.filter(r=>!JEV_ROLES.includes(r.role)).slice(0,3);
+  while(extras.length<2)extras.push({role:'',personId:''});
+  openForm({title:'Asignaciones · '+a.title,saveLabel:'Guardar',
+    intro:`<div class="info"><b>¿Quién hace qué en este servicio?</b><span>${esc(fLong(a.date))}. Cada persona verá su turno en “Tú”.</span></div>`,
+    fields:[...JEV_ROLES.map((r,k)=>({id:'r'+k,label:r,type:'select',value:who(r),options:opts})),
+      ...extras.map((x,k)=>({type:'pair',fields:[{id:'xr'+k,label:'Otro rol',value:x.role,ph:'Ej.: Cafetería'},{id:'xp'+k,label:'Persona',type:'select',value:x.personId,options:opts}]}))],
+    onSave:async v=>{
+      const roles=[];JEV_ROLES.forEach((r,k)=>{if(v['r'+k])roles.push({role:r,personId:v['r'+k]})});
+      extras.forEach((_,k)=>{const r=String(v['xr'+k]||'').trim();if(r&&v['xp'+k])roles.push({role:r.slice(0,40),personId:v['xp'+k]})});
+      const before=new Set(jevRolesOf(a).map(r=>r.personId)),after=new Set(roles.map(r=>r.personId));
+      const crew=[...new Set([...(a.crew||[]).filter(id=>!before.has(id)),...after])];
+      const ok=await save('jevacts',{...a,roles,crew});if(ok)toast('Asignaciones guardadas.')}});
+}
+function jevMyRoles(){
+  if(!ME)return '';
+  const L=jevUpcoming().flatMap(a=>jevRolesOf(a).filter(r=>r.personId===ME).map(r=>({a,r}))).slice(0,6);
+  if(!L.length)return '';
+  return `<section class="panel"><div class="panel-h"><h2>Mis turnos asignados</h2></div><ul class="list">${L.map(({a,r})=>`<li class="click" data-go="actividades"><span class="grow"><b>${esc(r.role)}</b><br><span class="small muted">${esc(a.title)} · ${esc(jevWhen(a.date))}${a.time?' · '+esc(jevTime(a.time)):''}</span></span></li>`).join('')}</ul></section>`}
+
+/* ---------- Escaletas (el programa del culto) ---------- */
+const jevScAll=()=>(S.jevscaletas||[]);
+const jevScFor=actId=>jevScAll().find(x=>x.actId===actId);
+const SC_TEMPLATE=[['Bienvenida y apertura',5,'Bienvenida'],['Alabanza',20,'Alabanza'],['Oración',5,'Oración'],['Dinámica',10,'Dinámica'],['Anuncios',5,''],['Mensaje',30,'Mensaje'],['Ministración',10,'Alabanza'],['Cierre y despedida',5,'']];
+function jevScTimes(sc){
+  let [h,m]=String(sc.time||'18:00').split(':').map(Number);let t=(h||0)*60+(m||0);
+  return (sc.items||[]).map(it=>{const st=t;t+=Number(it.min)||0;return {it,start:st,end:t}})}
+const jevMin=t=>jevTime(String(Math.floor(t/60)%24).padStart(2,'0')+':'+String(t%60).padStart(2,'0'));
+function jevScList(){
+  const L=jevScAll().slice().sort((a,b)=>String(b.date||'').localeCompare(String(a.date||''))).slice(0,8);
+  return `<section class="panel"><div class="panel-h"><h2>Escaletas</h2>${jevMgr()?'<button class="btn sm" data-jev="newsc" data-id="">Nueva escaleta</button>':''}</div>
+    ${L.length?L.map(sc=>`<div class="sc-card"><div><h3>${esc(sc.title)}</h3><span class="small muted">${[sc.date?fDate(sc.date):'',sc.time?jevTime(sc.time):'',(sc.items||[]).length+' parte'+((sc.items||[]).length===1?'':'s')].filter(Boolean).map(esc).join(' · ')}</span></div><button class="btn sm primary" data-jev="opensc" data-id="${esc(sc.id)}">Abrir</button></div>`).join('')
+      :`<p class="muted" style="margin:0">${jevMgr()?'Arma el programa del culto: partes, tiempos y responsables. Toca “Nueva escaleta” o “Armar escaleta” en una actividad.':'Cuando los líderes armen la escaleta del culto, la verás aquí.'}</p>`}</section>`}
+async function jevNewSc(actId){
+  if(!jevMgr())return;
+  const a=actId&&byId('jevacts',actId);
+  const id=await save('jevscaletas',{title:a?'Escaleta · '+a.title:'Escaleta del culto',date:a?a.date:TODAY,time:a?(a.time||'18:00'):'18:00',actId:a?a.id:'',items:[],notes:'',createdBy:ME});
+  if(id){ui.jevScId=id;go('escaleta');const sc=byId('jevscaletas',id);if(sc)jevScTemplate(sc,true)}}
+function jevScTemplate(sc,ask){
+  const run=async()=>{
+    const a=sc.actId&&byId('jevacts',sc.actId);
+    const items=SC_TEMPLATE.map(([title,min,role])=>({id:uid(),title,min,who:(a&&jevRolesOf(a).find(r=>r.role===role)||{}).personId||'',notes:''}));
+    await save('jevscaletas',{...sc,items:[...(sc.items||[]),...items]});render()};
+  if(ask){openForm({title:'¿Empezar con partes comunes?',saveLabel:'Sí, agregarlas',intro:'<div class="info gold"><b>Plantilla de culto</b><span>Bienvenida, alabanza, oración, dinámica, anuncios, mensaje, ministración y cierre. Luego cambias tiempos y responsables como quieras.</span></div>',fields:[],onSave:run});return}
+  run()}
+function vJevEscaleta(){
+  const sc=byId('jevscaletas',ui.jevScId);
+  if(!sc)return `<div class="head"><div><h1>Escaleta</h1></div></div><section class="panel empty"><b>No encontré esa escaleta</b><p class="muted">Pudo haberse borrado.</p><button class="btn primary" data-jev="scback">Volver a Actividades</button></section>`;
+  const T=jevScTimes(sc),mgr=jevMgr(),total=T.length?T[T.length-1].end-(T[0].start):0;
+  return `<div class="head no-print"><div><span class="gr" aria-hidden="true">ΤΑΞΙΣ</span><h1>${esc(sc.title)}</h1><p>${[sc.date?fLong(sc.date):'',sc.time?'Empieza '+jevTime(sc.time):'',total?'Dura '+total+' min':''].filter(Boolean).map(esc).join(' · ')}</p></div>
+    <div class="row"><button class="btn ghost" data-jev="scback">← Actividades</button>${mgr?`<button class="btn" data-jev="scmeta" data-id="${esc(sc.id)}">Datos</button>`:''}<button class="btn" data-jev="sccopy" data-id="${esc(sc.id)}">Copiar para WhatsApp</button><button class="btn" data-jev="scprint">Imprimir</button></div></div>
+    <div class="sc-print"><h2 class="sc-ptitle">${esc(sc.title)} · ${esc(sc.date?fLong(sc.date):'')}</h2>
+    ${T.length?`<ol class="sc-list">${T.map(({it,start,end},k)=>`<li class="sc-item"><div class="sc-time">${esc(jevMin(start))}<small>${Number(it.min)||0} min</small></div>
+      <div><h4>${esc(it.title)}</h4>${it.who&&byId('people',it.who)?`<span class="sc-who">${esc(pName(it.who))}</span>`:''}${it.notes?`<p class="small muted" style="margin:4px 0 0">${esc(it.notes)}</p>`:''}</div>
+      ${mgr?`<div class="sc-ctl no-print"><button class="btn ghost sm" data-jev="scmove" data-id="${esc(sc.id)}" data-item="${esc(it.id)}" data-d="-1" aria-label="Subir" ${k===0?'disabled':''}>↑</button><button class="btn ghost sm" data-jev="scmove" data-id="${esc(sc.id)}" data-item="${esc(it.id)}" data-d="1" aria-label="Bajar" ${k===T.length-1?'disabled':''}>↓</button><button class="btn sm" data-jev="scedit" data-id="${esc(sc.id)}" data-item="${esc(it.id)}">Editar</button></div>`:''}</li>`).join('')}</ol>
+      <p class="small muted">Termina a las ${esc(jevMin(T[T.length-1].end))}.</p>`
+      :`<section class="panel empty"><b>Todavía no hay partes</b><p class="muted">Agrega la primera o usa la plantilla de culto.</p></section>`}
+    ${sc.notes?`<p class="jv-lnote"><span class="lbl">Notas</span>${esc(sc.notes)}</p>`:''}</div>
+    ${mgr?`<div class="row no-print" style="margin-top:12px"><button class="btn primary" data-jev="scadd" data-id="${esc(sc.id)}">Agregar parte</button><button class="btn" data-jev="sctpl" data-id="${esc(sc.id)}">Agregar partes comunes</button></div>`:''}`}
+function jevEditScMeta(sc){
+  const acts=[['','Ninguna'],...jevAll().slice().sort((a,b)=>String(b.date).localeCompare(String(a.date))).slice(0,30).map(a=>[a.id,fDate(a.date)+' · '+a.title])];
+  openForm({title:'Datos de la escaleta',saveLabel:'Guardar',fields:[
+    {id:'title',label:'Nombre',value:sc.title,required:true},
+    {type:'pair',fields:[{id:'date',label:'Fecha',type:'date',value:sc.date||TODAY},{id:'time',label:'Hora de inicio',type:'time',value:sc.time||'18:00'}]},
+    {id:'actId',label:'Actividad',type:'select',value:sc.actId||'',options:acts},
+    {id:'notes',label:'Notas generales',type:'textarea',value:sc.notes,ph:'Tema del culto, colores, recordatorios…'}],
+    onSave:async v=>{await save('jevscaletas',{...sc,title:v.title,date:v.date,time:v.time,actId:v.actId,notes:v.notes})},
+    onDelete:async()=>{await remove('jevscaletas',sc.id);go('actividades')},delLabel:'Eliminar escaleta'})}
+function jevEditScItem(sc,it={}){
+  openForm({title:it.id?'Editar parte':'Agregar parte',saveLabel:'Guardar',fields:[
+    {id:'title',label:'Parte',value:it.title,required:true,ph:'Alabanza, Mensaje, Dinámica…'},
+    {type:'pair',fields:[{id:'min',label:'Minutos',type:'number',value:it.min??10,min:0},{id:'who',label:'Responsable',type:'select',value:it.who||'',options:peopleOpts('Sin asignar')}]},
+    {id:'notes',label:'Notas',type:'textarea',value:it.notes,ph:'Canciones, materiales, indicaciones…'}],
+    onSave:async v=>{
+      const row={id:it.id||uid(),title:v.title,min:Math.max(0,Number(v.min)||0),who:v.who,notes:v.notes};
+      const items=it.id?(sc.items||[]).map(x=>x.id===it.id?row:x):[...(sc.items||[]),row];
+      await save('jevscaletas',{...sc,items})},
+    onDelete:it.id?async()=>{await save('jevscaletas',{...sc,items:(sc.items||[]).filter(x=>x.id!==it.id)})}:null,delLabel:'Quitar parte'})}
+async function jevScMove(id,itemId,d){
+  const sc=byId('jevscaletas',id);if(!sc||!jevMgr())return;
+  const items=[...(sc.items||[])],i=items.findIndex(x=>x.id===itemId),j=i+d;
+  if(i<0||j<0||j>=items.length)return;
+  [items[i],items[j]]=[items[j],items[i]];
+  await save('jevscaletas',{...sc,items});render()}
+function jevScText(sc){
+  const T=jevScTimes(sc);
+  return `*${sc.title}*\n${[sc.date?fLong(sc.date):'',sc.time?'Empieza '+jevTime(sc.time):''].filter(Boolean).join(' · ')}\n\n`+
+    T.map(({it,start})=>`${jevMin(start)} · *${it.title}* (${Number(it.min)||0} min)${it.who&&byId('people',it.who)?' — '+pName(it.who):''}${it.notes?'\n   '+it.notes:''}`).join('\n')+
+    (sc.notes?`\n\n📝 ${sc.notes}`:'')+`\n\nArca · JEV+`}
+async function jevScCopy(id){
+  const sc=byId('jevscaletas',id);if(!sc)return;
+  const txt=jevScText(sc);
+  try{await navigator.clipboard.writeText(txt);toast('Escaleta copiada: pégala en WhatsApp.')}
+  catch(_){window.open('https://wa.me/?text='+encodeURIComponent(txt),'_blank','noopener')}}
+
+/* ---------- Cumpleaños (también de quienes no son usuarios de Arca) ---------- */
+const jevMD=b=>{const m=/^(\d{4}-)?(\d{2})-(\d{2})$/.exec(String(b||''));return m?m[2]+'-'+m[3]:''};
+function jevBirthdays(){
+  const seen=new Set(),out=[];
+  S.people.filter(p=>p.status!=='inactivo'&&jevMD(p.birth)).forEach(p=>{const md=jevMD(p.birth);seen.add(norm(p.name)+md);out.push({key:'p'+p.id,name:p.name,md,pid:p.id,phone:p.phone||'',src:'persona'})});
+  (S.jevbdays||[]).filter(x=>jevMD(x.md||x.birth)).forEach(x=>{const md=jevMD(x.md||x.birth);if(seen.has(norm(x.name)+md))return;out.push({key:'b'+x.id,id:x.id,name:x.name,md,phone:x.phone||'',note:x.note||'',src:'extra',by:x.createdBy})});
+  return out}
+function jevBdayNext(b){const t=parse(TODAY);let d=new Date(t.getFullYear(),Number(b.md.slice(0,2))-1,Number(b.md.slice(3)));if(d<t)d=new Date(t.getFullYear()+1,d.getMonth(),d.getDate());return Math.round((d-t)/864e5)}
+function jevBdayBanner(){
+  const L=jevBirthdays().map(b=>({b,n:jevBdayNext(b)})).filter(x=>x.n<=3).sort((a,c)=>a.n-c.n);
+  if(!L.length)return '';
+  return L.map(({b,n})=>{const wa=waNum(b);const msg='¡Feliz cumpleaños, '+String(b.name).split(/\s+/)[0]+'! 🎂🎉 Dios te bendiga hoy y siempre. — JEV+';
+    return `<div class="cm-banner"><span style="font-size:1.6rem" aria-hidden="true">🎂</span><div class="grow"><b>${n===0?'Hoy cumple '+esc(b.name)+'!':n===1?'Mañana cumple '+esc(b.name):'En '+n+' días cumple '+esc(b.name)}</b></div>${n===0&&wa?`<a class="btn sm primary" href="https://wa.me/${wa}?text=${encodeURIComponent(msg)}" target="_blank" rel="noopener">Felicitar</a>`:''}</div>`}).join('')}
+function vJevCumples(){
+  const all=jevBirthdays(),off=ui.jevCm||0,base=parse(TODAY),first=new Date(base.getFullYear(),base.getMonth()+off,1);
+  const Y=first.getFullYear(),M=first.getMonth(),dim=new Date(Y,M+1,0).getDate(),lead=(first.getDay()+6)%7;
+  const mdStr=d=>String(M+1).padStart(2,'0')+'-'+String(d).padStart(2,'0');
+  const cells=[];for(let k=0;k<lead;k++)cells.push('<div class="cm-day out"></div>');
+  for(let d=1;d<=dim;d++){const L=all.filter(b=>b.md===mdStr(d));const isT=off===0&&d===base.getDate();
+    cells.push(`<div class="cm-day ${L.length?'has':''} ${isT?'today':''}"><b>${d}</b>${L.map(b=>`<i>${esc(String(b.name).split(/\s+/)[0])}</i>`).join('')}</div>`)}
+  const mon=first.toLocaleDateString('es',{month:'long',year:'numeric'});
+  const monthList=all.filter(b=>Number(b.md.slice(0,2))===M+1).sort((a,b)=>a.md.localeCompare(b.md));
+  const soon=all.map(b=>({b,n:jevBdayNext(b)})).sort((a,c)=>a.n-c.n).slice(0,6);
+  const row=(b,tail='')=>{const wa=waNum(b),canEdit=b.src==='extra'&&(jevMgr()||b.by===ME);
+    return `<li><span>${b.pid?jevFace(b.pid):`<span class="jv-face bg${colorOf(b.key)}">${esc(initials(b.name))}</span>`}</span><span class="grow"><b>${esc(b.name)}</b><br><span class="small muted">${Number(b.md.slice(3))} de ${esc(parse('2000-'+b.md).toLocaleDateString('es',{month:'long'}))}${b.src==='extra'?' · fuera de Arca':''}${tail}</span></span>${wa?`<a class="btn ghost sm" href="https://wa.me/${wa}" target="_blank" rel="noopener" aria-label="Escribirle a ${esc(b.name)}">WhatsApp</a>`:''}${canEdit?`<button class="btn ghost sm" data-jev="editbday" data-id="${esc(b.id)}">Editar</button>`:''}</li>`};
+  return `<div class="head"><div><span class="gr" aria-hidden="true">ΓΕΝΕΘΛΙΑ</span><h1>Cumpleaños</h1><p>Todos los del grupo, estén o no en Arca.</p></div>
+    <div class="row">${ME?'<button class="btn primary" data-jev="newbday">Agregar cumpleañero</button>':''}<button class="btn" data-jev="bdayics">Recordatorios en mi celular</button></div></div>
+    ${jevBdayBanner()}
+    <section class="panel"><div class="cm-nav"><button class="btn ghost sm" data-jev="cmmove" data-d="-1" aria-label="Mes anterior">←</button><h2 style="margin:0;text-transform:capitalize">${esc(mon)}</h2><span><button class="btn ghost sm" data-jev="cmnow">Hoy</button> <button class="btn ghost sm" data-jev="cmmove" data-d="1" aria-label="Mes siguiente">→</button></span></div>
+      <div class="cm-grid" role="grid">${['L','M','M','J','V','S','D'].map(x=>`<div class="cm-dow">${x}</div>`).join('')}${cells.join('')}</div></section>
+    <div class="grid2"><section class="panel"><div class="panel-h"><h2>Este mes</h2></div>${monthList.length?`<ul class="list">${monthList.map(b=>row(b)).join('')}</ul>`:'<p class="muted" style="margin:0">Nadie cumple en este mes.</p>'}</section>
+    <section class="panel"><div class="panel-h"><h2>Los que vienen</h2></div>${soon.length?`<ul class="list">${soon.map(({b,n})=>row(b,' · '+(n===0?'¡hoy!':n===1?'mañana':'en '+n+' días'))).join('')}</ul>`:'<p class="muted" style="margin:0">Agrega los cumpleaños del grupo para que Arca te avise.</p>'}</section></div>`}
+function jevEditBday(x={}){
+  const md=jevMD(x.md||x.birth),mo=md?Number(md.slice(0,2)):'',dy=md?Number(md.slice(3)):'';
+  const months=['enero','febrero','marzo','abril','mayo','junio','julio','agosto','septiembre','octubre','noviembre','diciembre'].map((m,k)=>[String(k+1),m]);
+  openForm({title:x.id?'Editar cumpleañero':'Agregar cumpleañero',saveLabel:'Guardar',
+    intro:x.id?'':'<div class="info gold"><b>Aunque no tenga cuenta en Arca</b><span>Agrega a cualquiera del grupo y Arca avisará su cumpleaños a todos.</span></div>',
+    fields:[{id:'name',label:'Nombre',value:x.name,required:true,ph:'La Michi'},
+      {type:'pair',fields:[{id:'day',label:'Día',type:'number',value:dy,min:1,required:true},{id:'month',label:'Mes',type:'select',value:String(mo||1),options:months}]},
+      {id:'phone',label:'WhatsApp (opcional)',type:'tel',value:x.phone,ph:'7000 0000'}],
+    onSave:async v=>{const d=Number(v.day),m=Number(v.month);
+      if(!(d>=1&&d<=31)){toast('El día debe ser entre 1 y 31.');return}
+      const mdv=String(m).padStart(2,'0')+'-'+String(d).padStart(2,'0');
+      const ok=await save('jevbdays',{...x,name:v.name,md:mdv,phone:v.phone,createdBy:x.createdBy||ME});if(ok)toast('Cumpleaños guardado.')},
+    onDelete:x.id?()=>remove('jevbdays',x.id):null})}
+/* Archivo .ics: cada cumpleaños se repite cada año y avisa el día anterior y ese día a las 9 a. m. */
+function jevBdayIcs(){
+  const all=jevBirthdays();if(!all.length){toast('Todavía no hay cumpleaños para exportar.');return}
+  const y=parse(TODAY).getFullYear(),esc2=t=>String(t).replace(/([,;\\])/g,'\\$1').replace(/\n/g,'\\n');
+  const L=['BEGIN:VCALENDAR','VERSION:2.0','PRODID:-//Arca JEV+//Cumpleanos//ES','CALSCALE:GREGORIAN','X-WR-CALNAME:Cumpleaños JEV+'];
+  for(const b of all){const ds=y+b.md.replace('-','');
+    L.push('BEGIN:VEVENT','UID:bday-'+b.key+'@arca-jev','DTSTAMP:'+new Date().toISOString().replace(/[-:]/g,'').slice(0,15)+'Z','DTSTART;VALUE=DATE:'+ds,'RRULE:FREQ=YEARLY','SUMMARY:'+esc2('🎂 Cumpleaños de '+b.name),'TRANSP:TRANSPARENT',
+      'BEGIN:VALARM','ACTION:DISPLAY','DESCRIPTION:'+esc2('Mañana cumple '+b.name),'TRIGGER:-PT15H','END:VALARM',
+      'BEGIN:VALARM','ACTION:DISPLAY','DESCRIPTION:'+esc2('Hoy cumple '+b.name),'TRIGGER:PT9H','END:VALARM','END:VEVENT')}
+  L.push('END:VCALENDAR');
+  const blob=new Blob([L.join('\r\n')],{type:'text/calendar'}),a=document.createElement('a');
+  a.href=URL.createObjectURL(blob);a.download='cumpleanos-jev.ics';document.body.appendChild(a);a.click();setTimeout(()=>{URL.revokeObjectURL(a.href);a.remove()},500);
+  toast('Abre el archivo para agregar los cumpleaños a tu calendario.')}
+
+/* ---------- Pines de Pinterest en las ideas ---------- */
+const PIN_RE=/^https:\/\/(?:[\w-]+\.)?(?:pinterest\.[a-z.]{2,7}\/[^\s]+|pin\.it\/[\w-]+)/i;
+function jevParsePins(txt){
+  const ok=[],bad=[];String(txt||'').split(/[\n\s]+/).map(x=>x.trim()).filter(Boolean).forEach(u=>{PIN_RE.test(u)?(ok.includes(u)||ok.push(u)):bad.push(u)});
+  return {ok:ok.slice(0,12),bad}}
+function jevPinsHtml(i){
+  const pins=(i.pins||[]).filter(u=>PIN_RE.test(u)),open=!!(ui.jevPins||{})[i.id];
+  const embeddable=pins.filter(u=>/pinterest\.[a-z.]+\/pin\/\d+/i.test(u));
+  return `<div class="jv-pins">${pins.map((u,k)=>`<a class="jv-pin" href="${esc(u)}" target="_blank" rel="noopener">📌 Pin ${k+1} ↗</a>`).join('')}
+    ${embeddable.length?`<button class="btn ghost sm" data-jev="showpins" data-id="${esc(i.id)}" aria-expanded="${open}">${open?'Ocultar pines':'Ver pines aquí'}</button>`:''}
+    ${ME?`<button class="btn ghost sm" data-jev="addpin" data-id="${esc(i.id)}">+ Pin</button>`:''}</div>
+    ${open&&embeddable.length?`<div class="jv-pinbox">${embeddable.map(u=>`<a data-pin-do="embedPin" data-pin-width="medium" href="${esc(u)}"></a>`).join('')}</div>`:''}`}
+function jevLoadPins(){
+  if(!document.querySelector('[data-pin-do]'))return;
+  if(window.PinUtils&&PinUtils.build){try{PinUtils.build()}catch(_){}return}
+  if(document.getElementById('pinitjs'))return;
+  const s=document.createElement('script');s.id='pinitjs';s.async=true;s.defer=true;s.src='https://assets.pinterest.com/js/pinit.js';document.body.appendChild(s)}
+function jevAddPin(i){
+  openForm({title:'Agregar un pin',saveLabel:'Agregar',
+    intro:'<div class="info gold"><b>Pinterest + Arca</b><span>Guarda el pin en tu cuenta de Pinterest, toca “Compartir” → “Copiar link” y pégalo aquí. ¿No la tienes? <a href="https://www.pinterest.com/download/" target="_blank" rel="noopener">Descárgala</a>.</span></div>',
+    fields:[{id:'url',label:'Link del pin',type:'url',required:true,ph:'https://pin.it/… o https://www.pinterest.com/pin/…'}],
+    onSave:async v=>{const r=jevParsePins(v.url);if(!r.ok.length){toast('Ese link no parece de Pinterest.');return}
+      const pins=[...new Set([...(i.pins||[]),...r.ok])].slice(0,12);const ok=await save('jevideas',{...i,pins});if(ok)toast('Pin agregado a la idea.')}})}
