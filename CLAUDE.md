@@ -19,7 +19,7 @@
 **4. Decisiones ya tomadas.**
 - Diseño Vidrio estelar: Philly naranja y negro; **JEV+ verde neón (#39FF88) y azul (#2F7BFF)**. El tema se cambia con `<html data-space="jev">` y las variables `--acc…`; no se copian estilos.
 - **Un solo Arca con espacios por grupo**, no dos aplicaciones. Cada registro tiene `space` (`philly` por defecto) y la llave primaria es `(space, collection, id)`.
-- **Acceso por correo** en `arca_members(space, email, role)`. Quien tiene filas entra solo a esos espacios. Quien no tiene ninguna fila (todo Philly hoy) sigue entrando a `philly`. Solo los admin de un espacio cambian sus membresías.
+- **Acceso por correo** en `arca_members(space, email, role)`. Quien tiene filas entra solo a esos espacios. Quien no tiene ninguna fila sigue entrando a `philly` solo mientras no se haya corrido `cerrar-acceso.sql`; después no ve nada. Solo los admin de un espacio cambian sus membresías.
 - Quien se agrega a JEV+ desde Equipo recibe su membresía solo en JEV+. Para que además siga en Philly hay que elegir “JEV+ y Philly” en su perfil; si no, pierde Philly (así se aísla a los jóvenes).
 - **Personas que están en Philly y en JEV+:** cada espacio guarda su propio registro (así los líderes de JEV+ no ven notas ni datos de Philly). Para no escribirlos otra vez, en JEV+ → Equipo hay un botón **Traer de Philly** (solo admin): copia nombre, correo, teléfono, cumpleaños y foto, guarda `fromPhilly` con el id original y les deja acceso a los dos espacios. Los títulos y equipos son de cada espacio. Los datos copiados no se sincronizan solos: si alguien cambia de teléfono, se edita en cada espacio.
 - En Philly, son administradores los ids fijos `APPROVERS` y `MANAGERS_PHILLY` de `index.html` **y** quien tenga rol `admin` en `arca_members` para `philly` (mismos permisos que Ricardo: aprobar, encargado, supervisión, llaves). Para dar o quitar ese permiso: **Personas → Permisos** (solo admins; elige Servidor o Administrador por persona, en el espacio activo; los fijos no se pueden bajar desde ahí y al guardar se les crea su fila de admin). `philly-admin.sql` queda como alternativa por SQL. Mario Ortiz se agregó así. En otros espacios, admin = rol `admin` en `arca_members`, y líder = título con “Líder”, “Pastor” o “admin”.
@@ -44,7 +44,7 @@
 **7. Problemas conocidos y cómo se resolvieron.**
 - **No volver a correr `lock-down.sql` después de `spaces.sql`:** crea una política que da acceso a todos los espacios. Ya se protegió para que no haga nada si existe `arca_members`.
 - **Los atributos `data-space` están también en `<html>` y `<body>`:** el selector de espacio usa `data-sp` para no atrapar todos los clics.
-- **En el celular el menú va abajo:** el selector de espacio sube a la barra superior y el menú de JEV+ tiene 6 columnas (`jev.css`).
+- **En el celular el menú va abajo:** el selector de espacio sube a la barra superior y el menú de JEV+ tiene 7 columnas (`jev.css`).
 - **Un mismo `id` en dos espacios** (por ejemplo `settings/invite`) es válido gracias a la llave primaria con `space`.
 - **Las solicitudes de contraseña** (`api/auth/*`) usan `upsertRecord()` de `lib/supabase-admin.js`, que funciona antes y después del SQL. Cada solicitud vive en el espacio de la persona (JEV+ o Philly).
 - **El acceso heredado se apaga con `cerrar-acceso.sql`**, que además crea `arca_access_closed()`; la app la consulta para saber si mostrar la pantalla de sin acceso. Sin correr el SQL, todo sigue como antes.
