@@ -12,8 +12,8 @@
 **3. Cómo está hecho.**
 - Sin framework ni compilación. `index.html` (un solo archivo grande con casi toda la app), `estelar.css` (tema Vidrio estelar), `evento.js` (banner y página de evento de Philly), `jev.js` y `jev.css` (todo lo de JEV+).
 - Funciones de Vercel en `api/` (`api/auth/` contraseñas, `api/drive/` archivos) y utilidades en `lib/`.
-- Cada colección de datos vive en `S[coleccion]`; `save(col, obj)` y `remove(col, id)` escriben a Supabase con el espacio activo. Hay conexión en vivo (realtime) filtrada por espacio.
-- Colecciones: `people, teams, songs, services, events, projects, tasks, recurring, settings, requests, devos, devoviews, devocomments, setlists, pwresets, eventos, jevacts, jevideas, jevscaletas, jevbdays`.
+- Los planes de culto viven dentro de `jevacts` (`items` y `assignments`). Cada colección de datos vive en `S[coleccion]`; `save(col, obj)` y `remove(col, id)` escriben a Supabase con el espacio activo. Hay conexión en vivo (realtime) filtrada por espacio.
+- Colecciones: `people, teams, songs, services, events, projects, tasks, recurring, settings, requests, devos, devoviews, devocomments, setlists, pwresets, eventos, jevacts, jevideas, jevbdays`.
 - Archivos SQL: `spaces.sql` (espacios y permisos), `spaces-rollback.sql` (deshacer), `drive-setup.sql`, `cerrar-acceso.sql` (apaga el acceso heredado a Philly), `lock-down.sql` (solo para antes de los espacios).
 
 **4. Decisiones ya tomadas.**
@@ -29,7 +29,7 @@
 **5. Qué ya funciona.**
 - Philly completo (servicios, alabanzas con cifras y PDF, equipos, calendario, tareas, devocionales, evento, invitaciones por formulario, contraseñas olvidadas, Google Drive).
 - Espacios: selector Philly / JEV+ (solo si perteneces a más de uno), datos y permisos separados, logo y tema por espacio.
-- JEV+: Inicio (próxima actividad, cifras, ideas, cumpleaños, aviso si alguien cumple hoy), Actividades (cultos y eventos, quiénes sirven, **asignaciones por servicio** con roles, “Voy a ir”), **Escaletas** (programa del culto con tiempos calculados, responsables, plantilla, copiar a WhatsApp e imprimir; se arman desde Actividades), Ideas de videos (mandar idea, votar, estados, nota de los líderes, link del video, **pines de Pinterest** que cualquiera puede agregar), **Cumpleaños** (calendario mensual con las personas de Equipo y con cumpleañeros que no son usuarios, aviso de hoy/mañana y archivo .ics con recordatorios para el celular), Tú (turnos asignados, solicitudes de ingreso y contraseñas olvidadas para admins), Equipo y Tareas.
+- JEV+: Inicio (próxima actividad, cifras, ideas, cumpleaños, aviso si alguien cumple hoy), Actividades (cultos y eventos, “Voy a ir”) y, dentro de cada una, su **plan** como los Servicios de Philly pero sin alabanzas: **orden del culto** (escaleta con horas calculadas, responsables, partes comunes, subir/bajar) y **equipo** (posición, persona y estado pendiente/confirmado/declinado; cada quien confirma o dice que no puede; el admin avisa por WhatsApp), con copiar a WhatsApp, imprimir y “Copiar a la semana siguiente”; Ideas de videos (mandar idea, votar, estados, nota de los líderes, link del video, **pines de Pinterest** que cualquiera puede agregar), **Cumpleaños** (calendario mensual con las personas de Equipo y con cumpleañeros que no son usuarios, aviso de hoy/mañana y archivo .ics con recordatorios para el celular), Tú (mis turnos con confirmar, solicitudes de ingreso y contraseñas olvidadas para admins), Equipo y Tareas.
 - Ingreso a JEV+: formulario propio `unirse.html` → `api/join/request` guarda una solicitud en el espacio `jev`; un líder la aprueba en Tú → “Solicitudes para unirse” (crea el perfil y da la membresía). Si se pega un link de Google Forms en Equipo, ese tiene prioridad.
 - Contraseñas olvidadas: `api/auth/forgot` guarda la solicitud en cada espacio donde está el correo; `api/auth/reset` la atiende un admin de ese espacio (`requireSpaceAdmin` en `lib/arca-admins.js`).
 - Marca de JEV+: `img/jev-logo.webp`, iconos `img/jev-*.png` y `manifest-jev.webmanifest` (se cambia solo al entrar a JEV+).
@@ -37,7 +37,7 @@
 **6. Pendiente, en orden.**
 1. Publicar esta versión y **después** correr `cerrar-acceso.sql` en Supabase (si alguna cuenta quedaría sin acceso, el script se detiene y lista sus correos). Desde entonces una cuenta nueva sin membresía ve “Tu cuenta aún no tiene acceso”.
 2. Probar con jóvenes reales: formulario `unirse.html`, aprobación, cuenta propia y que solo vean JEV+.
-3. Probar en el celular las pantallas nuevas (escaletas, cumpleaños, asignaciones, pines) y ajustar lo que los líderes pidan.
+3. Probar en el celular las pantallas nuevas (plan del culto, cumpleaños, pines) y ajustar lo que los líderes pidan.
 4. Sincronizar datos de contacto entre Philly y JEV+ para quien está en ambos (hoy se copian una vez con “Traer de Philly”).
 5. Avisos automáticos (hoy el aviso de cumpleaños aparece al abrir Arca y por el .ics; no hay mensajes automáticos por WhatsApp).
 
