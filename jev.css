@@ -196,3 +196,8 @@ html.lite .jv-hero-in{background:#08142B}
 @media print{.sc-ptitle{display:block!important;margin:0 0 8px}body *{visibility:hidden}.sc-print,.sc-print *{visibility:visible}.sc-print{position:absolute;left:0;top:0;width:100%;color:#000;background:#fff}.sc-print .sc-item{border:1px solid #999;background:#fff}.sc-print .sc-time{color:#000}.sc-print .sc-ctl,.no-print{display:none!important}}
 @media (max-width:640px){.cm-day{min-height:48px;padding:3px}.sc-item{grid-template-columns:62px 1fr}.sc-ctl{grid-column:1/-1;justify-content:flex-end}}
 .sc-ptitle{display:none}
+
+.sc-head{list-style:none;display:flex;justify-content:space-between;align-items:center;gap:8px;padding:8px 2px 0;color:var(--blue-hi,#6FA3FF);text-transform:uppercase;letter-spacing:.12em;font-size:.78rem}
+.jv-role i{font-style:normal;opacity:.8}
+.jv-role.st-declinado{opacity:.55;text-decoration:line-through}
+.jv-role.st-pendiente i{color:#ffcf5c}
