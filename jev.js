@@ -35,11 +35,11 @@ function spaceChrome(space){
   const brand=document.querySelector('.rail .brand'),mlg=document.querySelector('.mbar .lg'),credit=document.querySelector('.rail-foot .credit'),mfb=document.querySelector('.mbar .fbl');
   if(space==='jev'){
     if(brand&&!brand.dataset.philly)brand.dataset.philly=brand.innerHTML;
-    if(brand)brand.innerHTML='<img class="jevlogo-img" src="/img/jev-logo.webp" alt="JEV+ Jóvenes En Victoria" width="520" height="190">';
+    if(brand)brand.innerHTML='<img class="jevlogo-img" src="/img/jev-logo.webp" alt="JEV+ Jóvenes En Victoria" width="756" height="362">';
     if(mlg&&!mlg.dataset.philly){mlg.dataset.philly='1';mlg.style.display='none'}
     if(mfb)mfb.style.display='none';
     let mj=document.getElementById('jevMobileLogo');
-    if(!mj){mj=document.createElement('div');mj.id='jevMobileLogo';mj.className='jevlogo sm';mj.innerHTML='<img class="jevlogo-img" src="/img/jev-logo.webp" alt="JEV+" width="520" height="190">';const bar=document.querySelector('.mbar');if(bar)bar.insertBefore(mj,bar.firstChild)}
+    if(!mj){mj=document.createElement('div');mj.id='jevMobileLogo';mj.className='jevlogo sm';mj.innerHTML='<img class="jevlogo-img" src="/img/jev-logo.webp" alt="JEV+" width="756" height="362">';const bar=document.querySelector('.mbar');if(bar)bar.insertBefore(mj,bar.firstChild)}
     if(credit){if(!credit.dataset.philly)credit.dataset.philly=credit.innerHTML;credit.innerHTML='<span>JEV+ · Jóvenes En Victoria</span>'}
   }else{
     if(brand&&brand.dataset.philly){brand.innerHTML=brand.dataset.philly;delete brand.dataset.philly}
