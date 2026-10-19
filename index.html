@@ -1299,6 +1299,10 @@ async function loadSpaces(){
     throw error}
   SPACES_OK=true;
   const mine=(data||[]).map(r=>r.space);
+  /* Acceso heredado: sin membresías se entraba a Philly. cerrar-acceso.sql lo apaga (arca_access_closed() = true). */
+  if(!mine.length){
+    let closed=false;try{const r=await SB.rpc('arca_access_closed');closed=r.data===true}catch(_){}
+    if(closed){const e=new Error('sin acceso');e.noAccess=true;throw e}}
   SPACES=mine.length?SPACE_ORDER(mine):['philly'];
   let pref='';try{pref=localStorage.getItem('arca.space')||''}catch(_){}
   SPACE=SPACES.includes(pref)?pref:SPACES[0];
@@ -1397,6 +1401,23 @@ async function remove(col,id){
 function lockArca(){document.body.classList.add('locked');COLS.forEach(c=>S[c]=[]);ME='';try{localStorage.removeItem('nave.data')}catch(e){}
   if(LIVE_CHANNEL){try{SB.removeChannel(LIVE_CHANNEL)}catch(_){}LIVE_CHANNEL=null}const m=$('#main');if(m)m.innerHTML='';try{closeDrawer()}catch(_){}}
 function unlockArca(){document.body.classList.remove('locked');const g=document.getElementById('gate');if(g)g.innerHTML=''}
+/* Cuenta creada pero sin ningún espacio asignado: no ve nada hasta que un líder agregue su correo. */
+function renderNoAccess(){
+  lockArca();
+  const m=document.getElementById('gate');if(!m)return;
+  const em=esc(ME_USER?.email||'');
+  m.innerHTML=`<div class="gate-in">
+    <img class="gate-logo" src="/img/arca-logo.webp" alt="Arca" width="600" height="276">
+    <div class="gate-card" style="display:grid;gap:12px">
+      <h1>Tu cuenta aún no tiene acceso</h1>
+      <p class="muted" style="margin:0">Entraste con <b>${em}</b>, pero todavía no estás en ningún grupo de Arca. Pídele a un líder que agregue ese correo:</p>
+      <ul class="muted" style="margin:0;padding-left:18px"><li><b>Philly:</b> Ricardo o Andrés</li><li><b>JEV+:</b> un líder de jóvenes (o llena el formulario de ingreso)</li></ul>
+      <a class="btn primary" href="/unirse.html" style="text-align:center">Quiero unirme a JEV+</a>
+      <button class="btn" type="button" id="naRetry">Ya me dieron acceso: revisar</button>
+      <button class="btn ghost" type="button" id="naOut">Cerrar sesión</button>
+    </div></div>`;
+  document.getElementById('naRetry').onclick=()=>location.reload();
+  document.getElementById('naOut').onclick=async()=>{try{await SB.auth.signOut()}catch(_){}try{localStorage.removeItem('arca.me');localStorage.removeItem('arca.meok')}catch(_){}location.replace(location.pathname)}}
 function renderAuth(){
   lockArca();
   const m=document.getElementById('gate');
@@ -1444,7 +1465,7 @@ function renderAuth(){
     const b=$('#arcaForgot');b.disabled=true;msg.textContent='Enviando…';
     try{const r=await fetch('/api/auth/forgot',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({email})});const j=await r.json().catch(()=>({}));
       if(!r.ok)throw new Error(j.message||'Error '+r.status);
-      msg.textContent='Listo. Le llegó tu solicitud a Ricardo: te enviará una contraseña temporal por WhatsApp.'}
+      msg.textContent='Listo. Le llegó tu solicitud a los administradores de tu grupo: te enviarán una contraseña temporal por WhatsApp.'}
     catch(e){b.disabled=false;msg.textContent='No se pudo enviar: '+e.message}};
 }
 
@@ -1519,7 +1540,7 @@ async function init(){
     if(sess&&ME_USER&&mode==='live'&&_event!=='SIGNED_IN'){ME_USER=sess.user;try{SB.realtime.setAuth(sess.access_token)}catch(_){}return}
     if(sess){
       ME_USER=sess.user; CANWRITE=true; mode='live';unlockArca();maybeForcePw(sess.user);
-      loadSpaces().then(()=>syncData()).then(async()=>{await resolveIdentity();renderLive();render()}).catch(e=>{console.error('Arca / Supabase:',e);toast('Supabase: '+(e?.message||e?.code||'error desconocido'))});
+      loadSpaces().then(()=>syncData()).then(async()=>{await resolveIdentity();renderLive();render()}).catch(e=>{if(e&&e.noAccess)return renderNoAccess();console.error('Arca / Supabase:',e);toast('Supabase: '+(e?.message||e?.code||'error desconocido'))});
     }else{
       ME_USER=null; mode='auth'; renderLive(); renderAuth();
     }
@@ -1529,7 +1550,7 @@ async function init(){
   ME_USER=session.user; mode='live'; CANWRITE=true;unlockArca();maybeForcePw(session.user);
   renderLive(); render();
   try{await loadSpaces();await syncData();await resolveIdentity();renderLive();render();}
-  catch(e){console.error('Arca / Supabase:',e);toast('Supabase: '+(e?.message||e?.code||'error desconocido'));console.error('SUPABASE ERROR',e);render()}
+  catch(e){if(e&&e.noAccess){renderNoAccess();return}console.error('Arca / Supabase:',e);toast('Supabase: '+(e?.message||e?.code||'error desconocido'));console.error('SUPABASE ERROR',e);render()}
   setTimeout(()=>{try{maybeNews()}catch(_){}},4000);
 }
 function renderLive(){
@@ -1890,7 +1911,9 @@ const inviteCfg=()=>byId('settings','invite')||{};
 const pendingReqs=()=>sortBy(S.requests.filter(r=>(r.status||'pendiente')==='pendiente'),r=>r.submittedAt||'');
 const approvedNoAccess=()=>S.requests.filter(r=>r.status==='aprobada'&&!r.accessSent);
 const inviteMsg=url=>SPACE==='jev'?`¡Hola! 👋 Te invito a unirte al equipo de *JEV+* (Jóvenes En Victoria) en Arca: ahí vemos las actividades de los cultos y mandamos ideas de videos.\n\nLlena este formulario (2 minutos):\n${url}\n\nCuando los líderes lo aprueben, te mandamos tu acceso. ¡Dios te bendiga!`:`¡Hola! 👋 Te invito a unirte a *Arca*, la app de Taber Olocuilta donde vemos los cultos, las canciones y quién sirve cada día.\n\nLlena este formulario (2 minutos):\n${url}\n\nCuando Ricardo o Andrés lo aprueben, te mandamos tu acceso. ¡Dios te bendiga!`;
-function invitePanel(){const u=inviteCfg().formUrl,mgr=ADMIN()||MANAGERS.includes(ME);
+/* En JEV+, si no hay un Google Form pegado, se usa el formulario propio de Arca (/unirse.html). */
+const inviteUrl=()=>inviteCfg().formUrl||(SPACE==='jev'?location.origin+'/unirse.html':'');
+function invitePanel(){const u=inviteUrl(),mgr=ADMIN()||MANAGERS.includes(ME);
   if(!u&&!mgr)return '';
   return `<section class="panel invp"><div><h2>¿Falta alguien? Invítalo</h2><p class="muted" style="margin:6px 0 0">Mándale el formulario. Cuando lo llene, a Ricardo y Andrés les llega la solicitud para aprobarla, crear su perfil y enviarle su acceso.</p></div>
     ${u?`<div class="row"><a class="btn primary" href="https://wa.me/?text=${encodeURIComponent(inviteMsg(u))}" target="_blank" rel="noopener">Invitar por WhatsApp</a><button class="btn" data-invcopy>Copiar link del formulario</button>${mgr?'<button class="btn ghost sm" data-invset>Cambiar link</button>':''}</div>`
@@ -1918,7 +1941,7 @@ function pwPanel(){if(!ADMIN())return '';const L=pendingPw();if(!L.length)return
       ${p?'':'<p class="small" style="margin:0 0 8px">Ojo: este correo no está en ninguna persona. Si no lo conoces, descártalo.</p>'}
       <div class="tbtns" style="margin:4px 0 0"><button class="tb sm ok" data-pwreset="${r.id}">Crear contraseña temporal</button><button class="tb sm warn" data-pwno="${r.id}">Descartar</button></div></li>`}).join('')}</ul></details>`}
 async function pwResolve(id,action){const r=byId('pwresets',id);
-  try{const res=await arcaApi('/api/auth/reset',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({id,action})});const j=await res.json().catch(()=>({}));
+  try{const res=await arcaApi('/api/auth/reset',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({id,action,space:SPACE})});const j=await res.json().catch(()=>({}));
     if(!res.ok)throw new Error(j.message||'Error '+res.status);
     const i=S.pwresets.findIndex(x=>x.id===id);if(i>=0)S.pwresets[i]={...S.pwresets[i],status:action==='dismiss'?'descartada':'resuelta'};
     if(action==='dismiss'){toast('Solicitud descartada.');return render()}
@@ -3446,7 +3469,7 @@ document.addEventListener('click',async e=>{
   const rqn=e.target.closest&&e.target.closest('[data-reqno]');if(rqn){if(!rqn.dataset.arm){rqn.dataset.arm=1;rqn.textContent='¿Seguro? Toca otra vez';return}const r=byId('requests',rqn.dataset.reqno);if(r&&await save('requests',{...r,status:'descartada',reviewedBy:ME}))toast('Solicitud descartada.');return render()}
   const rqs=e.target.closest&&e.target.closest('[data-reqsent]');if(rqs){const r=byId('requests',rqs.dataset.reqsent);if(r)setTimeout(async()=>{if(await save('requests',{...r,accessSent:true,accessSentAt:new Date().toISOString()}))toast('Listo: '+(r.name||'')+' ya tiene su acceso.');render()},rqs.tagName==='A'?800:0);if(rqs.tagName!=='A')return;return}
   if(e.target.closest&&e.target.closest('[data-invset]'))return setInviteUrl();
-  if(e.target.closest&&e.target.closest('[data-invcopy]')){try{await navigator.clipboard.writeText(inviteCfg().formUrl||'');toast('Link copiado.')}catch(x){toast('No se pudo copiar. Mantén presionado el botón de WhatsApp.')}return}
+  if(e.target.closest&&e.target.closest('[data-invcopy]')){try{await navigator.clipboard.writeText(inviteUrl());toast('Link copiado.')}catch(x){toast('No se pudo copiar. Mantén presionado el botón de WhatsApp.')}return}
   const slu=e.target.closest&&e.target.closest('[data-sluse]');if(slu)return slCopy({setId:slu.dataset.sluse});
   const sle=e.target.closest&&e.target.closest('[data-sledit]');if(sle)return slEdit(sle.dataset.sledit);
   const wze=e.target.closest&&e.target.closest('[data-wzedit]');if(wze){try{closeDrawer()}catch(_){}return openEditWizard(wze.dataset.wzedit)}

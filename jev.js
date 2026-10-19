@@ -30,14 +30,15 @@ const jevFirst=pid=>String(pName(pid)).split(/\s+/)[0];
 
 /* ---------- Marca: logo y créditos del menú ---------- */
 function spaceChrome(space){
+  try{jevInstallIdentity(space)}catch(_){}
   const brand=document.querySelector('.rail .brand'),mlg=document.querySelector('.mbar .lg'),credit=document.querySelector('.rail-foot .credit'),mfb=document.querySelector('.mbar .fbl');
   if(space==='jev'){
     if(brand&&!brand.dataset.philly)brand.dataset.philly=brand.innerHTML;
-    if(brand)brand.innerHTML='<div class="jevlogo" role="img" aria-label="JEV+ Jóvenes En Victoria"><b>JEV<i>+</i></b><span>Jóvenes En Victoria</span></div>';
+    if(brand)brand.innerHTML='<img class="jevlogo-img" src="/img/jev-logo.webp" alt="JEV+ Jóvenes En Victoria" width="520" height="190">';
     if(mlg&&!mlg.dataset.philly){mlg.dataset.philly='1';mlg.style.display='none'}
     if(mfb)mfb.style.display='none';
     let mj=document.getElementById('jevMobileLogo');
-    if(!mj){mj=document.createElement('div');mj.id='jevMobileLogo';mj.className='jevlogo sm';mj.innerHTML='<b>JEV<i>+</i></b>';const bar=document.querySelector('.mbar');if(bar)bar.insertBefore(mj,bar.firstChild)}
+    if(!mj){mj=document.createElement('div');mj.id='jevMobileLogo';mj.className='jevlogo sm';mj.innerHTML='<img class="jevlogo-img" src="/img/jev-logo.webp" alt="JEV+" width="520" height="190">';const bar=document.querySelector('.mbar');if(bar)bar.insertBefore(mj,bar.firstChild)}
     if(credit){if(!credit.dataset.philly)credit.dataset.philly=credit.innerHTML;credit.innerHTML='<span>JEV+ · Jóvenes En Victoria</span>'}
   }else{
     if(brand&&brand.dataset.philly){brand.innerHTML=brand.dataset.philly;delete brand.dataset.philly}
@@ -46,6 +47,16 @@ function spaceChrome(space){
     const mj=document.getElementById('jevMobileLogo');if(mj)mj.remove();
     if(credit&&credit.dataset.philly){credit.innerHTML=credit.dataset.philly;delete credit.dataset.philly}
   }
+}
+
+/* Al instalar la app desde JEV+, queda con su propio nombre e icono (Chrome/Android; iOS usa el icono de abajo). */
+function jevInstallIdentity(space){
+  const set=(sel,attrs)=>{const el=document.querySelector(sel);if(el)Object.assign(el,attrs)};
+  const jev=space==='jev';
+  set('link[rel=manifest]',{href:jev?'/manifest-jev.webmanifest':'/manifest.webmanifest'});
+  set('link[rel=apple-touch-icon]',{href:jev?'/img/jev-apple-touch-icon.png':'/img/apple-touch-icon.png'});
+  set('link[rel=icon]',{href:jev?'/img/jev-icon-192.png':'/img/icon-192.png'});
+  const t=document.querySelector('meta[name=apple-mobile-web-app-title]');if(t)t.content=jev?'JEV+':'Arca';
 }
 
 /* ---------- Qué pantalla toca en cada ruta ---------- */
@@ -217,7 +228,8 @@ function vJevTu(){
       ${mine.length?`<div class="jv-stack tight">${mine.slice(0,5).map(a=>jevActCard(a)).join('')}</div>`:`<div class="empty" style="padding:18px"><p class="muted" style="margin:0">Nada por ahora. Mira las <a href="#actividades" data-go="actividades">actividades</a> y toca “Voy a ir”.</p></div>`}</section>
     <section class="panel"><div class="panel-h"><h2>Mis ideas de videos</h2></div>
       ${myIdeas.length?`<div class="jv-stack tight">${myIdeas.map(jevIdeaCard).join('')}</div>`:`<div class="empty" style="padding:18px"><p class="muted" style="margin:0">Todavía no has mandado ninguna.</p></div>`}</section>
-    <p class="small center" style="margin-top:18px"><button class="linkb" data-person="${esc(ME)}">Ver mi perfil</button></p>`;
+    ${reqPanel()}${pwPanel()}
+    <p class="small center" style="margin-top:18px"><button class="linkb" data-person="${esc(ME)}">Ver mi perfil</button> · <button class="linkb" data-mypw>Cambiar mi contraseña</button> · <button class="linkb" data-logout>Cerrar sesión</button></p>`;
 }
 
 /* ---------- Traer personas de Philly (sin escribir sus datos otra vez) ---------- */

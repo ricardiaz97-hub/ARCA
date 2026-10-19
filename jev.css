@@ -161,3 +161,7 @@ html.lite .jv-hero-in{background:#08142B}
 .jv-myph img,.jv-myph>span{width:100%;height:100%;object-fit:cover;display:grid;place-items:center;font-weight:900;font-size:1.5rem;color:#04120A}
 .jv-myph i{position:absolute;inset:auto 0 0 0;font:700 .62rem/1 inherit;font-style:normal;text-align:center;padding:5px 0;background:rgba(4,7,15,.72);color:var(--acc-hi);letter-spacing:.04em;text-transform:uppercase}
 .jv-myph:focus-within{outline:2px solid var(--acc-hi);outline-offset:3px}
+
+.jevlogo-img{display:block;width:100%;max-width:200px;height:auto}
+.jevlogo.sm .jevlogo-img{width:auto;height:30px;max-width:none}
+.rail .brand .jevlogo-img{padding:6px 4px 2px}
