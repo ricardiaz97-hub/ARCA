@@ -4,6 +4,7 @@
    Colecciones (en arca_records, con space='jev'):
    - 'jevacts'   → actividades y cultos: título, tipo, fecha, hora, lugar, notas, quiénes sirven, quiénes van
    - 'jevideas'  → ideas de videos: título, descripción, link de referencia, votos, estado, nota de los líderes
+   - 'jevprops'  → propuestas de actividades (pestaña Propuestas en Actividades): votos, quiénes ayudan, estado y su actividad
    Las personas, tareas y ajustes usan las colecciones normales de Arca (people, tasks, settings…). */
 
 const JEV_KINDS=[['culto','Culto'],['actividad','Actividad'],['ensayo','Ensayo'],['reunion','Reunión'],['especial','Evento especial']];
@@ -63,7 +64,7 @@ function jevInstallIdentity(space){
 /* ---------- Qué pantalla toca en cada ruta ---------- */
 function spaceView(space,route){
   if(space!=='jev')return null;
-  return {turno:vJevTu,inicio:vJevInicio,actividades:vJevActs,ideas:vJevIdeas,cumples:vJevCumples,culto:vJevCulto}[route]||null;
+  return {turno:vJevTu,inicio:vJevInicio,actividades:vJevActs,ideas:vJevIdeas,cumples:vJevCumples,culto:vJevCulto,propuesta:vJevProp}[route]||null;
 }
 
 /* ---------- Tarjeta de actividad ---------- */
@@ -82,6 +83,7 @@ function jevActCard(a,{past=false}={}){
       <div class="jv-foot">
         ${!past&&ME?`<button class="btn sm ${iGo?'primary':''}" data-jev="go" data-id="${esc(a.id)}" aria-pressed="${!!iGo}">${iGo?'✓ Voy':'Voy a ir'}</button>`:''}
         ${going.length?`<span class="small muted">${going.length} ${going.length===1?'confirmó':'confirmaron'}</span>`:''}
+        ${(()=>{const pr=jevPropsAll().find(x=>x.actId===a.id);return pr?`<button class="btn sm" data-jev="popen" data-id="${esc(pr.id)}">Logística y precios</button>`:''})()}
         <button class="btn sm" data-jev="plan" data-id="${esc(a.id)}">Ver plan${jevItems(a).length||jevAsg(a).length?'':jevMgr()?' (armarlo)':''}</button>
         ${jevMgr()?`<button class="btn ghost sm" data-jev="editact" data-id="${esc(a.id)}">Editar</button>`:''}
       </div>
@@ -96,14 +98,18 @@ function vJevActs(){
   const keep=a=>!f||a.kind===f;
   const chips=`<div class="jv-chips" role="group" aria-label="Filtrar por tipo"><button class="chip ${f?'':'on'}" data-jev="kind" data-k="">Todo</button>${JEV_KINDS.map(([k,l])=>`<button class="chip ${f===k?'on':''}" data-jev="kind" data-k="${k}">${l}</button>`).join('')}</div>`;
   const list=up.filter(keep);
-  return `<div class="head"><div><span class="gr" aria-hidden="true">ΛΑΤΡΕΙΑ</span><h1>Actividades</h1><p>Los cultos y todo lo que viene para JEV+.</p></div>
-    <div class="row">${jevMgr()?'<button class="btn primary" data-jev="newact">Nueva actividad</button>':''}</div></div>
+  const tab=ui.jevActTab==='props'?'props':'cal',nOpen=jevPropsAll().filter(p=>(p.status||'abierta')==='abierta').length;
+  const tabs=`<div class="seg jv-tabs" role="group" aria-label="Sección"><button data-jev="acttab" data-k="cal" aria-pressed="${tab==='cal'}">Calendario</button><button data-jev="acttab" data-k="props" aria-pressed="${tab==='props'}">Propuestas${nOpen?` · ${nOpen}`:''}</button></div>`;
+  const head=`<div class="head"><div><span class="gr" aria-hidden="true">ΛΑΤΡΕΙΑ</span><h1>Actividades</h1><p>${tab==='props'?'Ideas y propuestas del equipo: vota las que quieres que hagamos.':'Los cultos y todo lo que viene para JEV+.'}</p></div>
+    <div class="row">${tab==='cal'&&jevMgr()?'<button class="btn primary" data-jev="newact">Nueva actividad</button>':''}${tab==='props'&&ME?'<button class="btn primary" data-jev="newprop">Proponer algo</button>':''}</div></div>${tabs}`;
+  if(tab==='props')return head+jevPropsView();
+  return `${head}
     ${chips}
     ${list.length?`<div class="jv-stack">${list.map(a=>jevActCard(a)).join('')}</div>`:`<section class="panel empty"><b>${up.length?'No hay actividades de ese tipo.':'Todavía no hay actividades.'}</b><p class="muted">${jevMgr()?'Toca “Nueva actividad” para agregar el próximo culto.':'Cuando los líderes agreguen el próximo culto, aparecerá aquí.'}</p></section>`}
     ${past.filter(keep).length?`<details class="tcard tfold jv-past"><summary><h2 class="th2">Anteriores</h2><p class="small">${past.filter(keep).length} reciente${past.filter(keep).length===1?'':'s'}</p></summary><div class="jv-stack">${past.filter(keep).map(a=>jevActCard(a,{past:true})).join('')}</div></details>`:''}`;
 }
 
-function jevEditAct(a={}){
+function jevEditAct(a={},{afterCreate}={}){
   const people=sortBy(S.people.filter(p=>p.status!=='inactivo'),p=>p.name).map(p=>[p.id,p.name]);
   openForm({title:a.id?'Editar actividad':'Nueva actividad',saveLabel:'Guardar',fields:[
     {id:'title',label:'Nombre',value:a.title,required:true,ph:'Culto de jóvenes, Noche de alabanza…'},
@@ -113,7 +119,7 @@ function jevEditAct(a={}){
     onSave:async v=>{
       if(!v.title.trim()||!v.date){toast('Falta el nombre o la fecha.');return}
       const id=await save('jevacts',{...a,title:v.title.trim(),kind:v.kind,date:v.date,time:v.time,place:v.place.trim(),notes:v.notes.trim(),going:a.going||[],items:a.items||[],assignments:a.assignments||[],crew:a.crew||[],createdBy:a.createdBy||ME});
-      if(id&&!a.id){toast('Actividad creada. Toca “Ver plan” para armar el orden y el equipo.')}},
+      if(id&&!a.id){if(afterCreate)await afterCreate(id);else toast('Actividad creada. Toca “Ver plan” para armar el orden y el equipo.')}},
     onDelete:a.id?()=>remove('jevacts',a.id):null});
 }
 
@@ -121,6 +127,257 @@ async function jevToggleGo(id){
   const a=byId('jevacts',id);if(!a||!ME)return;
   const going=new Set(a.going||[]);going.has(ME)?going.delete(ME):going.add(ME);
   await save('jevacts',{...a,going:[...going]});render();
+}
+
+/* ---------- Propuestas de actividades (dentro de Actividades) ---------- */
+/* Colección 'jevprops': {title, desc, kind, when, place, budget, votes:[pid], helpers:[pid], status, note, actId, authorId, createdAt}
+   status: 'abierta' (se vota) · 'aprobada' (los líderes la quieren hacer) · 'programada' (ya es una actividad: actId) · 'descartada' */
+const JEV_PSTATES=[['abierta','En votación'],['aprobada','Aprobada'],['programada','Programada'],['descartada','Descartada']];
+const JEV_PSTATE=Object.fromEntries(JEV_PSTATES);
+const jevPropsAll=()=>S.jevprops||[];
+const jevPropVotes=p=>(p.votes||[]).filter(id=>byId('people',id));
+const jevPropHelpers=p=>(p.helpers||[]).filter(id=>byId('people',id));
+const jevPropOpen=p=>(p.status||'abierta')==='abierta'||p.status==='aprobada';
+const jevPropSorted=f=>jevPropsAll().filter(p=>f?(p.status||'abierta')===f:p.status!=='descartada').sort((x,y)=>{
+  const rank=p=>({aprobada:0,abierta:1,programada:2,descartada:3}[p.status||'abierta']??1);
+  return rank(x)-rank(y)||jevPropVotes(y).length-jevPropVotes(x).length||String(y.createdAt||'').localeCompare(String(x.createdAt||''))});
+/* La más votada entre las que siguen abiertas (solo si tiene al menos 2 votos y no hay empate). */
+function jevPropTop(){
+  const L=jevPropsAll().filter(p=>(p.status||'abierta')==='abierta').sort((x,y)=>jevPropVotes(y).length-jevPropVotes(x).length);
+  if(!L.length||jevPropVotes(L[0]).length<2)return null;
+  if(L[1]&&jevPropVotes(L[1]).length===jevPropVotes(L[0]).length)return null;
+  return L[0].id;
+}
+
+function jevPropCard(p,{top=null}={}){
+  const votes=jevPropVotes(p),helpers=jevPropHelpers(p),st=p.status||'abierta';
+  const iVote=ME&&votes.includes(ME),iHelp=ME&&helpers.includes(ME),mine=ME&&p.authorId===ME;
+  const act=p.actId&&byId('jevacts',p.actId);
+  const canVote=!!ME&&jevPropOpen(p);
+  const facts=[p.kind?JEV_KIND[p.kind]:'',p.when?'Para '+fDate(p.when):'',p.place,p.budget?'Costo aprox. $'+p.budget:''].filter(Boolean);
+  return `<article class="jv-idea jv-prop st-${esc(st)} ${top===p.id?'is-top':''}">
+    <button class="jv-vote ${iVote?'on':''}" data-jev="pvote" data-id="${esc(p.id)}" aria-pressed="${!!iVote}" aria-label="${iVote?'Quitar mi voto':'Votar por esta propuesta'}" ${canVote?'':'disabled'}><span aria-hidden="true">▲</span><b>${votes.length}</b></button>
+    <div class="jv-body">
+      <div class="jv-meta"><span class="jv-state ps-${esc(st)}">${esc(JEV_PSTATE[st]||'En votación')}</span>${top===p.id?'<span class="jv-top">🔥 La más votada</span>':''}${p.authorId?`<span class="small muted">Propuesta de ${esc(jevFirst(p.authorId))}</span>`:''}</div>
+      <h3>${esc(p.title)}</h3>
+      ${facts.length?`<p class="jv-sub">${facts.map(esc).join(' · ')}</p>`:''}
+      ${votes.length?`<span class="sparks" role="img" aria-label="${votes.length} ${votes.length===1?'voto':'votos'}: ${jevSparks(votes.length)} de 5 destellos">${[0,1,2,3,4].map(k=>`<i class="${k<jevSparks(votes.length)?'on':''}"></i>`).join('')}</span>`:''}
+      ${p.desc?`<p class="jv-notes">${esc(p.desc)}</p>`:''}
+      ${jevPItems(p).length?`<p class="small muted" style="margin:6px 0 0">🧾 ${jevPItems(p).length} cosa${jevPItems(p).length===1?'':'s'} en la lista · cuota ${esc(jevMoney(jevPFee(p)))} por persona${jevPItems(p).some(it=>!it.who)?' · faltan responsables':''}</p>`:''}
+      ${helpers.length?`<div class="jv-crew"><span class="lbl">Ayudan a organizar</span><span class="jv-faces">${helpers.map(id=>jevFace(id)).join('')}</span><span class="jv-names">${helpers.map(jevFirst).map(esc).join(', ')}</span></div>`:''}
+      ${act?`<p class="jv-lnote"><span class="lbl">Ya está en el calendario</span>${esc(act.title)} · ${esc(fDate(act.date))}${act.time?' · '+esc(jevTime(act.time)):''}</p>`:''}
+      ${p.note?`<p class="jv-lnote"><span class="lbl">Líderes</span>${esc(p.note)}</p>`:''}
+      <div class="jv-foot">
+        ${ME&&jevPropOpen(p)?`<button class="btn sm ${iHelp?'primary':''}" data-jev="phelp" data-id="${esc(p.id)}" aria-pressed="${!!iHelp}">${iHelp?'✓ Ayudo':'Yo ayudo'}</button>`:''}
+        <button class="btn sm" data-jev="popen" data-id="${esc(p.id)}">Logística y precios${jevPItems(p).length?` · ${esc(jevMoney(jevPTotal(p)))}`:''}</button>
+        ${act?`<button class="btn sm" data-jev="plan" data-id="${esc(act.id)}">Ver plan</button>`:''}
+        ${jevMgr()&&jevPropOpen(p)?`<button class="btn primary sm" data-jev="psched" data-id="${esc(p.id)}">Programar</button>`:''}
+        ${jevMgr()?`<button class="btn ghost sm" data-jev="pstatus" data-id="${esc(p.id)}">Estado y nota</button>`:''}
+        ${mine&&st==='abierta'?`<button class="btn ghost sm" data-jev="pedit" data-id="${esc(p.id)}">Editar</button>`:''}
+      </div>
+    </div>
+  </article>`;
+}
+
+function jevPropsView(){
+  const f=ui.jevPState||'';
+  const counts=Object.fromEntries(JEV_PSTATES.map(([k])=>[k,jevPropsAll().filter(p=>(p.status||'abierta')===k).length]));
+  const chips=`<div class="jv-chips" role="group" aria-label="Filtrar propuestas"><button class="chip ${f?'':'on'}" data-jev="pstate" data-k="">Todas</button>${JEV_PSTATES.filter(([k])=>k!=='descartada'||counts.descartada).map(([k,l])=>`<button class="chip ${f===k?'on':''}" data-jev="pstate" data-k="${k}">${l}${counts[k]?` · ${counts[k]}`:''}</button>`).join('')}</div>`;
+  const list=jevPropSorted(f),top=jevPropTop();
+  const myVotes=ME?jevPropsAll().filter(p=>jevPropOpen(p)&&jevPropVotes(p).includes(ME)).length:0;
+  const intro=`<div class="jv-pintro"><p>¿Qué te gustaría que hiciéramos? Una salida, un retiro, una noche de juegos, un culto especial… Propón, vota y apúntate a ayudar. Las más votadas los líderes las programan.</p>
+    ${jevMgr()&&jevPropsAll().some(jevPropOpen)?'<div class="row"><button class="btn ghost" data-jev="pcopy">Copiar resultados para WhatsApp</button></div>':''}
+    ${ME&&myVotes?`<p class="small muted" style="margin:8px 0 0">Has votado por ${myVotes} propuesta${myVotes===1?'':'s'}.</p>`:''}</div>`;
+  return intro+(ME?'':'<div class="info warn" role="alert"><b>Tu perfil aún no está vinculado.</b> Pídele a un líder que agregue tu correo en Equipo para poder proponer y votar.</div>')+chips+
+    (list.length?`<div class="jv-stack">${list.map(p=>jevPropCard(p,{top})).join('')}</div>`:`<section class="panel empty"><b>${jevPropsAll().length?'No hay propuestas en este estado.':'Aún no hay propuestas. ¡Lanza la primera!'}</b><p class="muted">Cualquiera del equipo puede proponer. Entre más votos, más rápido se hace.</p></section>`);
+}
+
+function jevEditProp(p={}){
+  openForm({title:p.id?'Editar propuesta':'Proponer una actividad',saveLabel:p.id?'Guardar':'Enviar propuesta',
+    intro:p.id?'':'<div class="info gold"><b>Cuéntala bien y suma votos</b><span>Di qué haríamos, para quién y por qué vale la pena. Si ya sabes cuándo, dónde o cuánto costaría, ponlo: ayuda a los líderes a decidir.</span></div>',
+    fields:[
+    {id:'title',label:'¿Qué propones?',value:p.title,required:true,ph:'Ej.: Noche de juegos y pizza, Retiro en la playa…'},
+    {id:'desc',label:'Cuéntanos más',type:'textarea',value:p.desc,ph:'Qué haríamos, a quién invitaríamos, qué se necesita…'},
+    {type:'pair',fields:[{id:'kind',label:'Tipo',type:'select',value:p.kind||'actividad',options:JEV_KINDS},{id:'when',label:'Fecha sugerida (opcional)',type:'date',value:p.when||''}]},
+    {type:'pair',fields:[{id:'place',label:'Lugar (opcional)',value:p.place,ph:'Templo, parque, playa…'},{id:'budget',label:'Costo aprox. por persona ($)',type:'number',value:p.budget??''}]}],
+    onSave:async v=>{
+      if(!v.title.trim()){toast('Escribe qué propones.');return}
+      const id=await save('jevprops',{status:'abierta',votes:p.id?(p.votes||[]):[ME],helpers:p.helpers||[],...p,title:v.title.trim(),desc:v.desc.trim(),kind:v.kind,when:v.when||'',place:v.place.trim(),budget:v.budget===''?'':Math.max(0,Number(v.budget)||0),authorId:p.authorId||ME,createdAt:p.createdAt||new Date().toISOString()});
+      if(id&&!p.id){ui.jevActTab='props';toast('¡Listo! Tu propuesta ya se puede votar. Compártela con el grupo.')}},
+    onDelete:p.id&&(p.authorId===ME||jevMgr())?()=>remove('jevprops',p.id):null});
+}
+
+function jevEditPropStatus(p){
+  openForm({title:'Estado de la propuesta',saveLabel:'Guardar',intro:`<div class="info"><b>${esc(p.title)}</b><span>${jevPropVotes(p).length} voto${jevPropVotes(p).length===1?'':'s'} · ${jevPropHelpers(p).length} ayudan</span></div>`,fields:[
+    {id:'status',label:'Estado',type:'select',value:p.status||'abierta',options:JEV_PSTATES},
+    {id:'note',label:'Nota para el equipo',type:'textarea',value:p.note,ph:'Por qué sí o por qué no, qué falta, cuándo se haría…'}],
+    onSave:async v=>{await save('jevprops',{...p,status:v.status,note:v.note.trim()})},
+    onDelete:()=>remove('jevprops',p.id),delLabel:'Eliminar propuesta'});
+}
+
+async function jevTogglePropList(id,field){
+  const p=byId('jevprops',id);if(!p||!ME||!jevPropOpen(p))return;
+  const set=new Set(p[field]||[]);const on=!set.has(ME);on?set.add(ME):set.delete(ME);
+  const ok=await save('jevprops',{...p,[field]:[...set]});
+  if(ok&&on&&field==='helpers')toast('¡Gracias! Los líderes sabrán que cuentas para organizarla.');
+  render();
+}
+
+/* Programar: abre el formulario de actividad ya lleno; al guardar, la propuesta queda ligada y los que ayudan pasan al equipo. */
+function jevScheduleProp(p){
+  const helpers=jevPropHelpers(p);
+  jevEditAct({title:p.title,kind:p.kind||'actividad',date:p.when&&p.when>=TODAY?p.when:'',place:p.place||'',
+    notes:[p.desc,p.budget?'Costo aprox. por persona: $'+p.budget:'',helpers.length?'Ayudan a organizar: '+helpers.map(pName).join(', '):''].filter(Boolean).join('\n'),
+    crew:helpers,going:[]},
+    {afterCreate:async actId=>{const cur=byId('jevprops',p.id)||p;await save('jevprops',{...cur,status:'programada',actId});toast('Programada. Quienes votaron ya la verán en el calendario.')}});
+}
+
+function jevPropsText(){
+  const L=jevPropsAll().filter(jevPropOpen).sort((x,y)=>jevPropVotes(y).length-jevPropVotes(x).length);
+  return `*Propuestas de JEV+ · ${fLong(TODAY)}*\n\n`+L.map((p,i)=>`${i+1}. ${p.title} — ${jevPropVotes(p).length} voto${jevPropVotes(p).length===1?'':'s'}${p.status==='aprobada'?' ✅ aprobada':''}${jevPropHelpers(p).length?`\n   Ayudan: ${jevPropHelpers(p).map(jevFirst).join(', ')}`:''}`).join('\n')+
+    `\n\n¿Aún no votas? Entra a Arca → Actividades → Propuestas.`;
+}
+async function jevPropsCopy(){
+  const txt=jevPropsText();
+  try{await navigator.clipboard.writeText(txt);toast('Resultados copiados: pégalos en WhatsApp.')}
+  catch(_){window.open('https://wa.me/?text='+encodeURIComponent(txt),'_blank','noopener')}
+}
+
+/* ---------- Logística y precios de una propuesta (pantalla 'propuesta') ---------- */
+/* En el mismo registro de 'jevprops':
+   items:  [{id, name, qty, price, link, cat, who, done}]  → lista de compras/materiales con precio unitario y link del súper
+   meet:   {place, time, back, bring}                       → punto de encuentro, salida, regreso y qué lleva cada quien
+   rides:  [{id, driver, seats, from}]                      → carros disponibles; riders:{rideId:[pid]}
+   people: número de asistentes esperados (si falta, se usan los votos) · fee: cuota fija (si falta, se calcula) · paid:[pid] */
+const JEV_CATS=[['comida','Comida y bebida'],['materiales','Materiales'],['transporte','Transporte'],['entradas','Entradas'],['otro','Otro']];
+const JEV_CAT=Object.fromEntries(JEV_CATS);
+const jevMoney=n=>'$'+(Math.round((Number(n)||0)*100)/100).toLocaleString('en-US',{minimumFractionDigits:2,maximumFractionDigits:2});
+const jevPItems=p=>Array.isArray(p.items)?p.items:[];
+const jevItemSub=it=>(Number(it.qty)||1)*(Number(it.price)||0);
+const jevPTotal=p=>jevPItems(p).reduce((t,it)=>t+jevItemSub(it),0);
+const jevPPeople=p=>Math.max(1,Number(p.people)||jevPropVotes(p).length||1);
+const jevPFee=p=>Number(p.fee)>0?Number(p.fee):Math.ceil(jevPTotal(p)/jevPPeople(p)*4)/4; /* redondeado hacia arriba a $0.25 */
+const jevPMayEdit=p=>!!ME&&(jevMgr()||p.authorId===ME);
+const jevPRides=p=>Array.isArray(p.rides)?p.rides:[];
+const jevPRiders=(p,rid)=>((p.riders||{})[rid]||[]).filter(id=>byId('people',id));
+/* Busca el producto en los súper de El Salvador si no hay link. */
+const jevShopSearch=q=>'https://www.google.com/search?q='+encodeURIComponent(q+' precio supermercado El Salvador');
+
+function vJevProp(){
+  const p=byId('jevprops',ui.jevPropId);
+  if(!p)return `<div class="head"><div><h1>Propuesta</h1></div></div><section class="panel empty"><b>No encontré esa propuesta</b><p class="muted">Pudo haberse borrado.</p><button class="btn primary" data-jev="gotoprops">Volver a Propuestas</button></section>`;
+  const ed=jevPMayEdit(p),mgr=jevMgr(),items=jevPItems(p),total=jevPTotal(p),fee=jevPFee(p);
+  const st=p.status||'abierta',votes=jevPropVotes(p),iVote=ME&&votes.includes(ME);
+  const byCat=JEV_CATS.map(([k,l])=>[k,l,items.filter(it=>(it.cat||'otro')===k)]).filter(x=>x[2].length);
+  const done=items.filter(it=>it.done).length,claimed=items.filter(it=>it.who&&byId('people',it.who)).length;
+  const itemRow=it=>{const who=it.who&&byId('people',it.who);const mineIt=ME&&it.who===ME;
+    return `<li class="lg-item ${it.done?'done':''}">
+      <button class="lg-check" data-jev="litdone" data-id="${esc(p.id)}" data-item="${esc(it.id)}" aria-pressed="${!!it.done}" aria-label="${it.done?'Marcar como pendiente':'Marcar como comprado o listo'}" ${ME?'':'disabled'}>${it.done?'✓':''}</button>
+      <div class="lg-main"><b>${esc(it.name)}</b>${Number(it.qty)>1?` <span class="muted">× ${esc(it.qty)}</span>`:''}
+        <div class="lg-sub">${Number(it.price)?`${esc(jevMoney(it.price))} c/u${Number(it.qty)>1?' · '+esc(jevMoney(jevItemSub(it))):''}`:'<span class="muted">Sin precio</span>'}
+        · ${isUrl(it.link)?`<a href="${esc(it.link)}" target="_blank" rel="noopener">Ver en la tienda ↗</a>`:`<a href="${esc(jevShopSearch(it.name))}" target="_blank" rel="noopener" class="muted">Buscar precio ↗</a>`}</div></div>
+      <div class="lg-who">${who?`<span class="lg-tag ${mineIt?'me':''}">${mineIt?'Lo llevas tú':'Lo lleva '+esc(jevFirst(it.who))}</span>`:''}
+        ${ME&&(!who||mineIt)?`<button class="btn sm ${mineIt?'':'primary'}" data-jev="litclaim" data-id="${esc(p.id)}" data-item="${esc(it.id)}">${mineIt?'Ya no':'Yo lo llevo'}</button>`:''}
+        ${ed||(ME&&mineIt)?`<button class="icon-btn" data-jev="litedit" data-id="${esc(p.id)}" data-item="${esc(it.id)}" aria-label="Editar ${esc(it.name)}">✎</button>`:''}</div>
+    </li>`};
+  const list=items.length?byCat.map(([k,l,L])=>`<h3 class="lg-cat">${esc(l)} <span class="muted">${esc(jevMoney(L.reduce((t,it)=>t+jevItemSub(it),0)))}</span></h3><ul class="lg-list">${L.map(itemRow).join('')}</ul>`).join('')
+    :`<div class="empty" style="padding:14px"><b>La lista está vacía</b><p class="muted" style="margin:6px 0 0">Agrega lo que hay que comprar o llevar, con su precio y el link del súper.</p></div>`;
+  const people=jevPPeople(p),paid=(p.paid||[]).filter(id=>byId('people',id));
+  const payers=[...new Set([...votes,...jevPropHelpers(p),...paid])];
+  const budget=`<section class="panel"><div class="panel-h"><h2>Presupuesto</h2>${ed?`<button class="btn ghost sm" data-jev="pbudget" data-id="${esc(p.id)}">Ajustar</button>`:''}</div><div class="panel-b">
+    <div class="lg-stats"><div><b>${esc(jevMoney(total))}</b><span>costo total</span></div><div><b>${people}</b><span>persona${people===1?'':'s'}${Number(p.people)?'':' (según votos)'}</span></div><div class="hi"><b>${esc(jevMoney(fee))}</b><span>cuota por persona${Number(p.fee)?'':' (calculada)'}</span></div></div>
+    ${items.length?`<div class="lg-prog"><span>Listo ${done}/${items.length}</span><i style="--w:${Math.round(done/items.length*100)}%"></i><span>Con responsable ${claimed}/${items.length}</span></div>`:''}
+    ${fee>0?`<h3 class="lg-cat">Cuotas <span class="muted">${esc(jevMoney(paid.length*fee))} de ${esc(jevMoney(people*fee))}</span></h3>
+      ${payers.length?`<ul class="lg-pay">${payers.map(id=>{const ok=paid.includes(id);return `<li><span>${jevFace(id)}</span><span class="grow">${esc(pName(id))}</span>${mgr?`<button class="btn sm ${ok?'primary':''}" data-jev="ppaid" data-id="${esc(p.id)}" data-pid="${esc(id)}" aria-pressed="${ok}">${ok?'✓ Pagó':'Marcar pagado'}</button>`:`<span class="lg-tag ${ok?'me':''}">${ok?'Pagó':'Pendiente'}</span>`}</li>`}).join('')}</ul>`:'<p class="small muted">Cuando la gente vote o se apunte, aparecerá aquí para marcar quién ya pagó.</p>'}`:''}
+  </div></section>`;
+  const m=p.meet||{};
+  const meet=`<section class="panel"><div class="panel-h"><h2>Logística</h2>${ed?`<button class="btn ghost sm" data-jev="pmeet" data-id="${esc(p.id)}">Editar</button>`:''}</div><div class="panel-b lg-meet">
+    ${m.place||m.time||m.back||m.bring?`${m.place?`<p><span class="lbl">Punto de encuentro</span>${isUrl(m.place)?`<a href="${esc(m.place)}" target="_blank" rel="noopener">Abrir en el mapa ↗</a>`:`${esc(m.place)} · <a href="https://www.google.com/maps/search/${encodeURIComponent(m.place)}" target="_blank" rel="noopener">Mapa ↗</a>`}</p>`:''}
+      ${m.time?`<p><span class="lbl">Salida</span>${esc(jevTime(m.time))}</p>`:''}${m.back?`<p><span class="lbl">Regreso</span>${esc(jevTime(m.back))}</p>`:''}
+      ${m.bring?`<p><span class="lbl">Cada quien lleva</span>${esc(m.bring)}</p>`:''}`:`<p class="muted" style="margin:0">${ed?'Pon el punto de encuentro, la hora de salida y regreso, y qué lleva cada quien.':'Los organizadores todavía no ponen la logística.'}</p>`}
+  </div>
+  <div class="panel-h" style="border-top:1px solid var(--line)"><h2>Transporte</h2>${ME?`<button class="btn ghost sm" data-jev="rideadd" data-id="${esc(p.id)}">Tengo carro</button>`:''}</div><div class="panel-b">
+    ${jevPRides(p).length?`<ul class="lg-pay">${jevPRides(p).map(r=>{const rs=jevPRiders(p,r.id),free=Math.max(0,(Number(r.seats)||0)-rs.length),inIt=ME&&rs.includes(ME),mineR=ME&&r.driver===ME;
+      return `<li><span>${jevFace(r.driver)}</span><span class="grow"><b>${esc(pName(r.driver))}</b><br><span class="small muted">${free} lugar${free===1?'':'es'} libre${free===1?'':'s'}${r.from?' · sale de '+esc(r.from):''}${rs.length?' · Van: '+rs.map(jevFirst).map(esc).join(', '):''}</span></span>
+        ${ME&&!mineR&&(inIt||free>0)?`<button class="btn sm ${inIt?'primary':''}" data-jev="rideseat" data-id="${esc(p.id)}" data-ride="${esc(r.id)}">${inIt?'✓ Voy aquí':'Pedir lugar'}</button>`:''}
+        ${mineR||mgr?`<button class="icon-btn" data-jev="rideedit" data-id="${esc(p.id)}" data-ride="${esc(r.id)}" aria-label="Editar carro">✎</button>`:''}</li>`}).join('')}</ul>`:'<p class="small muted" style="margin:0">¿Tienes carro? Ofrece lugares y los demás se apuntan.</p>'}
+  </div></section>`;
+  return `<div class="head"><div><span class="gr" aria-hidden="true">ΟΔΟΣ</span><h1>${esc(p.title)}</h1><p>${[JEV_PSTATE[st],p.when?'Para '+fDate(p.when):'',p.place].filter(Boolean).map(esc).join(' · ')}</p></div>
+    <div class="row"><button class="btn ghost" data-jev="gotoprops">← Propuestas</button>
+      ${ME&&jevPropOpen(p)?`<button class="btn ${iVote?'primary':''}" data-jev="pvote" data-id="${esc(p.id)}">${iVote?'✓ Votaste':'▲ Votar'} · ${votes.length}</button>`:''}
+      <button class="btn" data-jev="lcopy" data-id="${esc(p.id)}">Copiar lista para WhatsApp</button>${p.actId&&byId('jevacts',p.actId)?`<button class="btn" data-jev="plan" data-id="${esc(p.actId)}">Ver plan</button>`:''}</div></div>
+    ${p.desc?`<p class="jv-notes" style="margin:0 0 16px">${esc(p.desc)}</p>`:''}
+    <div class="grid2"><div class="stack"><section class="panel"><div class="panel-h"><h2>Lista de compras y materiales</h2>${ME?`<button class="btn primary sm" data-jev="litadd" data-id="${esc(p.id)}">Agregar</button>`:''}</div><div class="panel-b">${list}</div></section></div>
+    <div class="stack">${budget}${meet}</div></div>`;
+}
+
+function jevEditLItem(p,it={}){
+  const ed=jevPMayEdit(p);
+  openForm({title:it.id?'Editar':'Agregar a la lista',saveLabel:'Guardar',
+    intro:it.id?'':'<div class="info"><b>Tip</b><span>Abre el producto en la página del súper (Walmart, Super Selectos, PriceSmart…), copia el link y pégalo aquí con su precio.</span></div>',
+    fields:[
+    {id:'name',label:'¿Qué hay que comprar o llevar?',value:it.name,required:true,ph:'Pizza grande, platos desechables, bocina…'},
+    {type:'pair',fields:[{id:'qty',label:'Cantidad',type:'number',value:it.qty??1},{id:'price',label:'Precio c/u ($)',type:'number',value:it.price??''}]},
+    {type:'pair',fields:[{id:'cat',label:'Categoría',type:'select',value:it.cat||'comida',options:JEV_CATS},{id:'who',label:'Quién lo lleva',type:'select',value:it.who||'',options:[['','Nadie todavía'],...sortBy(S.people.filter(x=>x.status!=='inactivo'),x=>x.name).map(x=>[x.id,x.name])]}]},
+    {id:'link',label:'Link de la tienda (opcional)',type:'url',value:it.link,ph:'https://…'}],
+    onSave:async v=>{
+      if(v.link&&!isUrl(v.link)){toast('El link no parece válido.');return}
+      const cur=byId('jevprops',p.id)||p,L=[...jevPItems(cur)];
+      const n={id:it.id||uid(),done:!!it.done,...it,name:v.name.trim(),qty:Math.max(1,Number(v.qty)||1),price:v.price===''?'':Math.max(0,Number(v.price)||0),cat:v.cat,who:v.who,link:v.link.trim()};
+      const i=L.findIndex(x=>x.id===n.id);if(i>=0)L[i]=n;else L.push(n);
+      await save('jevprops',{...cur,items:L})},
+    onDelete:it.id&&(ed||it.who===ME)?async()=>{const cur=byId('jevprops',p.id)||p;await save('jevprops',{...cur,items:jevPItems(cur).filter(x=>x.id!==it.id)})}:null});
+}
+async function jevLItemPatch(pid,itemId,fn){
+  const p=byId('jevprops',pid);if(!p||!ME)return;
+  await save('jevprops',{...p,items:jevPItems(p).map(x=>x.id===itemId?fn(x):x)});render();
+}
+
+function jevEditBudget(p){
+  openForm({title:'Ajustar presupuesto',saveLabel:'Guardar',intro:`<div class="info"><b>Costo total: ${esc(jevMoney(jevPTotal(p)))}</b><span>Si dejas vacíos los campos, la cuota se calcula con el total entre los votos.</span></div>`,fields:[
+    {type:'pair',fields:[{id:'people',label:'Personas esperadas',type:'number',value:p.people??''},{id:'fee',label:'Cuota fija por persona ($)',type:'number',value:p.fee??''}]}],
+    onSave:async v=>{const cur=byId('jevprops',p.id)||p;await save('jevprops',{...cur,people:v.people===''?'':Math.max(1,Math.round(Number(v.people)||1)),fee:v.fee===''?'':Math.max(0,Number(v.fee)||0)})}});
+}
+function jevEditMeet(p){
+  const m=p.meet||{};
+  openForm({title:'Logística',saveLabel:'Guardar',fields:[
+    {id:'place',label:'Punto de encuentro (dirección o link de Maps)',value:m.place,ph:'Frente al templo · https://maps.app.goo.gl/…'},
+    {type:'pair',fields:[{id:'time',label:'Hora de salida',type:'time',value:m.time},{id:'back',label:'Hora de regreso',type:'time',value:m.back}]},
+    {id:'bring',label:'Qué lleva cada quien',type:'textarea',value:m.bring,ph:'Biblia, ropa cómoda, bloqueador, $5 para la entrada…'}],
+    onSave:async v=>{const cur=byId('jevprops',p.id)||p;await save('jevprops',{...cur,meet:{place:v.place,time:v.time,back:v.back,bring:v.bring}})}});
+}
+function jevEditRide(p,r={}){
+  openForm({title:r.id?'Mi carro':'Ofrecer mi carro',saveLabel:'Guardar',fields:[
+    {type:'pair',fields:[{id:'seats',label:'Lugares libres',type:'number',value:r.seats??3},{id:'from',label:'Sale de (opcional)',value:r.from,ph:'Colonia, punto…'}]}],
+    onSave:async v=>{const cur=byId('jevprops',p.id)||p,L=[...jevPRides(cur)];const n={id:r.id||uid(),driver:r.driver||ME,seats:Math.max(1,Math.round(Number(v.seats)||1)),from:v.from};
+      const i=L.findIndex(x=>x.id===n.id);if(i>=0)L[i]=n;else L.push(n);await save('jevprops',{...cur,rides:L})},
+    onDelete:r.id?async()=>{const cur=byId('jevprops',p.id)||p;const riders={...(cur.riders||{})};delete riders[r.id];await save('jevprops',{...cur,rides:jevPRides(cur).filter(x=>x.id!==r.id),riders})}:null,delLabel:'Quitar carro'});
+}
+async function jevToggleSeat(pid,rid){
+  const p=byId('jevprops',pid);if(!p||!ME)return;const riders={...(p.riders||{})};
+  const was=(riders[rid]||[]).includes(ME);for(const k of Object.keys(riders))riders[k]=(riders[k]||[]).filter(x=>x!==ME);
+  const r=jevPRides(p).find(x=>x.id===rid);
+  if(!was){if(r&&jevPRiders({...p,riders},rid).length>=(Number(r.seats)||0)){toast('Ese carro ya está lleno.');return}riders[rid]=[...(riders[rid]||[]),ME]}
+  await save('jevprops',{...p,riders});render();
+}
+async function jevTogglePaid(pid,who){
+  const p=byId('jevprops',pid);if(!p||!jevMgr())return;const s=new Set(p.paid||[]);s.has(who)?s.delete(who):s.add(who);
+  await save('jevprops',{...p,paid:[...s]});render();
+}
+function jevListText(p){
+  const m=p.meet||{};
+  return `*${p.title}*${p.when?' · '+fLong(p.when):''}\n`+
+    (m.place||m.time?`📍 ${[m.place,m.time?'salida '+jevTime(m.time):'',m.back?'regreso '+jevTime(m.back):''].filter(Boolean).join(' · ')}\n`:'')+
+    (m.bring?`🎒 Cada quien lleva: ${m.bring}\n`:'')+
+    (jevPItems(p).length?`\n*Lista*\n`+jevPItems(p).map(it=>`${it.done?'✅':'⬜'} ${it.name}${Number(it.qty)>1?' ×'+it.qty:''}${Number(it.price)?' — '+jevMoney(jevItemSub(it)):''}${it.who&&byId('people',it.who)?' ('+jevFirst(it.who)+')':' (¿quién lo lleva?)'}${isUrl(it.link)?'\n   '+it.link:''}`).join('\n')+
+      `\n\nTotal: ${jevMoney(jevPTotal(p))} · Cuota: ${jevMoney(jevPFee(p))} por persona`:'')+
+    (jevPRides(p).length?`\n\n🚗 Carros: `+jevPRides(p).map(r=>(f=>`${jevFirst(r.driver)} (${f} lugar${f===1?'':'es'} libre${f===1?'':'s'})`)(Math.max(0,(Number(r.seats)||0)-jevPRiders(p,r.id).length))).join(', '):'')+
+    `\n\nArca · JEV+`;
+}
+async function jevListCopy(pid){
+  const p=byId('jevprops',pid);if(!p)return;const txt=jevListText(p);
+  try{await navigator.clipboard.writeText(txt);toast('Lista copiada: pégala en WhatsApp.')}
+  catch(_){window.open('https://wa.me/?text='+encodeURIComponent(txt),'_blank','noopener')}
 }
 
 /* ---------- Ideas de videos ---------- */
@@ -218,7 +475,10 @@ function vJevInicio(){
   const actPanel=more.length?`<section class="panel"><div class="panel-h"><h2>Más adelante</h2><button class="btn ghost sm" data-go="actividades">Ver todas</button></div><ul class="list">${more.map(a=>`<li class="click" data-go="actividades"><span class="jv-mini-d"><b>${parse(a.date).getDate()}</b><small>${esc(parse(a.date).toLocaleDateString('es',{month:'short'}).replace('.',''))}</small></span><span class="grow"><b>${esc(a.title)}</b><br><span class="small muted">${[JEV_KIND[a.kind],a.time?jevTime(a.time):''].filter(Boolean).map(esc).join(' · ')}</span></span></li>`).join('')}</ul></section>`:'';
   const birthdays=(()=>{const m=now.getMonth()+1;const L=jevBirthdays().filter(b=>Number(b.md.slice(0,2))===m).sort((a,b)=>a.md.localeCompare(b.md));
     return L.length?`<section class="panel"><div class="panel-h"><h2>Cumpleaños del mes 🎂</h2><button class="btn ghost sm" data-go="cumples">Calendario</button></div><ul class="list">${L.map(b=>`<li><span>${b.pid?jevFace(b.pid):'<span class="jv-face bg'+colorOf(b.key)+'">'+esc(initials(b.name))+'</span>'}</span><span class="grow"><b>${esc(b.name)}</b></span><span class="small muted">${Number(b.md.slice(3))} de ${esc(parse('2000-'+b.md).toLocaleDateString('es',{month:'long'}))}</span></li>`).join('')}</ul></section>`:''})();
-  return head+jevBdayBanner()+hero+stats+`<div class="grid2"><div class="stack">${ideaPanel}</div><div class="stack">${actPanel}${birthdays}</div></div>`;
+  const props=jevPropsAll().filter(jevPropOpen).sort((x,y)=>jevPropVotes(y).length-jevPropVotes(x).length).slice(0,3);
+  const propPanel=`<section class="panel"><div class="panel-h"><h2>Propuestas más votadas</h2><button class="btn ghost sm" data-jev="gotoprops">Ver todas</button></div>
+    ${props.length?`<div class="jv-stack tight">${props.map(p=>jevPropCard(p,{top:jevPropTop()})).join('')}</div>`:`<div class="empty" style="padding:18px"><p class="muted" style="margin:0 0 10px">¿Qué te gustaría que hiciéramos?</p>${ME?'<button class="btn primary" data-jev="newprop">Proponer algo</button>':''}</div>`}</section>`;
+  return head+jevBdayBanner()+hero+stats+`<div class="grid2"><div class="stack">${ideaPanel}</div><div class="stack">${propPanel}${actPanel}${birthdays}</div></div>`;
 }
 
 /* ---------- Tú ---------- */
@@ -293,6 +553,29 @@ document.addEventListener('click',e=>{
   if(k==='editidea'){const i=byId('jevideas',id);if(i&&(i.authorId===ME||jevMgr()))jevEditIdea(i);return}
   if(k==='status'){const i=byId('jevideas',id);if(i&&jevMgr())jevEditStatus(i);return}
   if(k==='vote')return jevToggleVote(id);
+  if(k==='acttab'){ui.jevActTab=b.dataset.k==='props'?'props':'cal';return render()}
+  if(k==='pstate'){ui.jevPState=b.dataset.k||'';return render()}
+  if(k==='newprop'){if(!ME){toast('Tu perfil aún no está vinculado.');return}jevEditProp();return}
+  if(k==='pedit'){const p=byId('jevprops',id);if(p&&(p.authorId===ME||jevMgr()))jevEditProp(p);return}
+  if(k==='pstatus'){const p=byId('jevprops',id);if(p&&jevMgr())jevEditPropStatus(p);return}
+  if(k==='psched'){const p=byId('jevprops',id);if(p&&jevMgr())jevScheduleProp(p);return}
+  if(k==='pvote')return jevTogglePropList(id,'votes');
+  if(k==='phelp')return jevTogglePropList(id,'helpers');
+  if(k==='pcopy')return jevPropsCopy();
+  if(k==='gotoprops'){ui.jevActTab='props';go('actividades');return}
+  if(k==='popen'){ui.jevPropId=id;go('propuesta');return}
+  const P=()=>byId('jevprops',id),IT=()=>{const p=P();return p&&jevPItems(p).find(x=>x.id===b.dataset.item)};
+  if(k==='litadd'){const p=P();if(p&&ME)jevEditLItem(p);return}
+  if(k==='litedit'){const p=P(),it=IT();if(p&&it&&(jevPMayEdit(p)||it.who===ME))jevEditLItem(p,it);return}
+  if(k==='litdone')return jevLItemPatch(id,b.dataset.item,x=>({...x,done:!x.done}));
+  if(k==='litclaim')return jevLItemPatch(id,b.dataset.item,x=>({...x,who:x.who===ME?'':(x.who&&byId('people',x.who)?x.who:ME)}));
+  if(k==='pbudget'){const p=P();if(p&&jevPMayEdit(p))jevEditBudget(p);return}
+  if(k==='pmeet'){const p=P();if(p&&jevPMayEdit(p))jevEditMeet(p);return}
+  if(k==='ppaid')return jevTogglePaid(id,b.dataset.pid);
+  if(k==='rideadd'){const p=P();if(p&&ME){const mine=jevPRides(p).find(r=>r.driver===ME);jevEditRide(p,mine||{})}return}
+  if(k==='rideedit'){const p=P(),r=p&&jevPRides(p).find(x=>x.id===b.dataset.ride);if(r&&(r.driver===ME||jevMgr()))jevEditRide(p,r);return}
+  if(k==='rideseat')return jevToggleSeat(id,b.dataset.ride);
+  if(k==='lcopy')return jevListCopy(id);
   if(k==='plan'){ui.jevActId=id;go('culto');return}
   if(k==='back'){go('actividades');return}
   if(k==='planedit'){const x=byId('jevacts',id);if(x&&jevMgr())jevEditAct(x);return}
