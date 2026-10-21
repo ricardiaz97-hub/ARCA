@@ -244,3 +244,13 @@ html.lite .jv-hero-in{background:#08142B}
 .lg-meet .lbl{display:block}
 @media (max-width:760px){.lg-item{flex-wrap:wrap}.lg-who{width:100%;justify-content:flex-start;padding-left:40px}.jv-tabs{display:flex}.jv-tabs button{flex:1}}
 .lg-meet .lbl{font-size:.7rem;font-weight:700;letter-spacing:.12em;text-transform:uppercase;color:var(--muted)}
+.lg-src{display:inline-block;margin-left:4px;font-size:.66rem;font-weight:700;letter-spacing:.06em;text-transform:uppercase;padding:2px 6px;background:rgba(255,255,255,.07);color:var(--muted);vertical-align:2px}
+.lg-src.s-alquiler{background:rgba(255,200,92,.14);color:#FFD58A}
+.lg-src.s-prestado,.lg-src.s-tenemos,.lg-src.s-donado{background:rgba(47,123,255,.18);color:var(--blue-hi)}
+.lg-owe{color:#FFD58A;font-weight:700}
+.lg-tag.none{background:rgba(255,200,92,.12);color:#FFD58A}
+.lg-amt{display:grid;justify-items:end;gap:2px;font-family:var(--f-display,inherit);font-weight:700;white-space:nowrap}
+.lg-amt small{font-size:.72rem}
+.lg-noone{background:rgba(255,255,255,.1);color:var(--muted)}
+.lg-check.sm{width:24px;height:24px;font-size:.8rem;flex:none}
+.lg-check.sm.on{background:var(--acc);box-shadow:none}
