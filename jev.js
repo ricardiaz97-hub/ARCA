@@ -83,7 +83,7 @@ function jevActCard(a,{past=false}={}){
       <div class="jv-foot">
         ${!past&&ME?`<button class="btn sm ${iGo?'primary':''}" data-jev="go" data-id="${esc(a.id)}" aria-pressed="${!!iGo}">${iGo?'✓ Voy':'Voy a ir'}</button>`:''}
         ${going.length?`<span class="small muted">${going.length} ${going.length===1?'confirmó':'confirmaron'}</span>`:''}
-        ${(()=>{const pr=jevPropsAll().find(x=>x.actId===a.id);return pr?`<button class="btn sm" data-jev="popen" data-id="${esc(pr.id)}">Logística y precios</button>`:''})()}
+        ${jevLBtn(a,'sm')}
         <button class="btn sm" data-jev="plan" data-id="${esc(a.id)}">Ver plan${jevItems(a).length||jevAsg(a).length?'':jevMgr()?' (armarlo)':''}</button>
         ${jevMgr()?`<button class="btn ghost sm" data-jev="editact" data-id="${esc(a.id)}">Editar</button>`:''}
       </div>
@@ -255,19 +255,30 @@ const jevMoney=n=>'$'+(Math.round((Number(n)||0)*100)/100).toLocaleString('en-US
 const jevPItems=p=>Array.isArray(p.items)?p.items:[];
 const jevItemSub=it=>(Number(it.qty)||1)*(Number(it.price)||0);
 const jevPTotal=p=>jevPItems(p).reduce((t,it)=>t+jevItemSub(it),0);
-const jevPPeople=p=>Math.max(1,Number(p.people)||jevPropVotes(p).length||1);
+/* La misma página sirve para propuestas ('jevprops') y para actividades y cultos ('jevacts'). */
+const jevLIsAct=p=>!!p&&!!byId('jevacts',p.id)&&!byId('jevprops',p.id);
+const jevLGet=id=>byId('jevprops',id)||byId('jevacts',id);
+const jevLSave=obj=>save(byId('jevprops',obj.id)?'jevprops':'jevacts',obj);
+const jevLWho=p=>jevLIsAct(p)?(p.going||[]).filter(id=>byId('people',id)):jevPropVotes(p);
+const jevPPeople=p=>Math.max(1,Number(p.people)||jevLWho(p).length||1);
 const jevPFee=p=>Number(p.fee)>0?Number(p.fee):Math.ceil(jevPTotal(p)/jevPPeople(p)*4)/4; /* redondeado hacia arriba a $0.25 */
-const jevPMayEdit=p=>!!ME&&(jevMgr()||p.authorId===ME);
+const jevPMayEdit=p=>!!ME&&(jevMgr()||p.authorId===ME||(jevLIsAct(p)&&p.createdBy===ME));
 const jevPRides=p=>Array.isArray(p.rides)?p.rides:[];
 const jevPRiders=(p,rid)=>((p.riders||{})[rid]||[]).filter(id=>byId('people',id));
 /* Busca el producto en los súper de El Salvador si no hay link. */
 const jevShopSearch=q=>'https://www.google.com/search?q='+encodeURIComponent(q+' precio supermercado El Salvador');
 
+/* Botón de logística de una actividad: si vino de una propuesta con lista y la actividad aún no tiene la suya, abre la de la propuesta. */
+function jevLBtn(a,size=''){
+  const pr=jevPropsAll().find(x=>x.actId===a.id),own=jevPItems(a).length||(a.meet&&(a.meet.place||a.meet.time))||jevPRides(a).length;const tgt=pr&&!own?pr:a;
+  return `<button class="btn ${size}" data-jev="popen" data-id="${esc(tgt.id)}">💲 Logística y precios${jevPItems(tgt).length?' · '+esc(jevMoney(jevPTotal(tgt))):''}</button>`;
+}
+
 function vJevProp(){
-  const p=byId('jevprops',ui.jevPropId);
-  if(!p)return `<div class="head"><div><h1>Propuesta</h1></div></div><section class="panel empty"><b>No encontré esa propuesta</b><p class="muted">Pudo haberse borrado.</p><button class="btn primary" data-jev="gotoprops">Volver a Propuestas</button></section>`;
+  const p=jevLGet(ui.jevPropId);
+  if(!p)return `<div class="head"><div><h1>Logística</h1></div></div><section class="panel empty"><b>No encontré esa actividad o propuesta</b><p class="muted">Pudo haberse borrado.</p><button class="btn primary" data-jev="gotoprops">Volver a Propuestas</button></section>`;
   const ed=jevPMayEdit(p),mgr=jevMgr(),items=jevPItems(p),total=jevPTotal(p),fee=jevPFee(p);
-  const st=p.status||'abierta',votes=jevPropVotes(p),iVote=ME&&votes.includes(ME);
+  const isAct=jevLIsAct(p),st=p.status||'abierta',votes=isAct?[]:jevPropVotes(p),iVote=ME&&votes.includes(ME),going=jevLWho(p),iGo=ME&&going.includes(ME);
   const byCat=JEV_CATS.map(([k,l])=>[k,l,items.filter(it=>(it.cat||'otro')===k)]).filter(x=>x[2].length);
   const done=items.filter(it=>it.done).length,claimed=items.filter(it=>it.who&&byId('people',it.who)).length;
   const itemRow=it=>{const who=it.who&&byId('people',it.who);const mineIt=ME&&it.who===ME;
@@ -283,9 +294,9 @@ function vJevProp(){
   const list=items.length?byCat.map(([k,l,L])=>`<h3 class="lg-cat">${esc(l)} <span class="muted">${esc(jevMoney(L.reduce((t,it)=>t+jevItemSub(it),0)))}</span></h3><ul class="lg-list">${L.map(itemRow).join('')}</ul>`).join('')
     :`<div class="empty" style="padding:14px"><b>La lista está vacía</b><p class="muted" style="margin:6px 0 0">Agrega lo que hay que comprar o llevar, con su precio y el link del súper.</p></div>`;
   const people=jevPPeople(p),paid=(p.paid||[]).filter(id=>byId('people',id));
-  const payers=[...new Set([...votes,...jevPropHelpers(p),...paid])];
+  const payers=[...new Set([...(isAct?going:votes),...(isAct?jevCrewOf(p):jevPropHelpers(p)),...paid])];
   const budget=`<section class="panel"><div class="panel-h"><h2>Presupuesto</h2>${ed?`<button class="btn ghost sm" data-jev="pbudget" data-id="${esc(p.id)}">Ajustar</button>`:''}</div><div class="panel-b">
-    <div class="lg-stats"><div><b>${esc(jevMoney(total))}</b><span>costo total</span></div><div><b>${people}</b><span>persona${people===1?'':'s'}${Number(p.people)?'':' (según votos)'}</span></div><div class="hi"><b>${esc(jevMoney(fee))}</b><span>cuota por persona${Number(p.fee)?'':' (calculada)'}</span></div></div>
+    <div class="lg-stats"><div><b>${esc(jevMoney(total))}</b><span>costo total</span></div><div><b>${people}</b><span>persona${people===1?'':'s'}${Number(p.people)?'':isAct?' (los que van)':' (según votos)'}</span></div><div class="hi"><b>${esc(jevMoney(fee))}</b><span>cuota por persona${Number(p.fee)?'':' (calculada)'}</span></div></div>
     ${items.length?`<div class="lg-prog"><span>Listo ${done}/${items.length}</span><i style="--w:${Math.round(done/items.length*100)}%"></i><span>Con responsable ${claimed}/${items.length}</span></div>`:''}
     ${fee>0?`<h3 class="lg-cat">Cuotas <span class="muted">${esc(jevMoney(paid.length*fee))} de ${esc(jevMoney(people*fee))}</span></h3>
       ${payers.length?`<ul class="lg-pay">${payers.map(id=>{const ok=paid.includes(id);return `<li><span>${jevFace(id)}</span><span class="grow">${esc(pName(id))}</span>${mgr?`<button class="btn sm ${ok?'primary':''}" data-jev="ppaid" data-id="${esc(p.id)}" data-pid="${esc(id)}" aria-pressed="${ok}">${ok?'✓ Pagó':'Marcar pagado'}</button>`:`<span class="lg-tag ${ok?'me':''}">${ok?'Pagó':'Pendiente'}</span>`}</li>`}).join('')}</ul>`:'<p class="small muted">Cuando la gente vote o se apunte, aparecerá aquí para marcar quién ya pagó.</p>'}`:''}
@@ -302,11 +313,11 @@ function vJevProp(){
         ${ME&&!mineR&&(inIt||free>0)?`<button class="btn sm ${inIt?'primary':''}" data-jev="rideseat" data-id="${esc(p.id)}" data-ride="${esc(r.id)}">${inIt?'✓ Voy aquí':'Pedir lugar'}</button>`:''}
         ${mineR||mgr?`<button class="icon-btn" data-jev="rideedit" data-id="${esc(p.id)}" data-ride="${esc(r.id)}" aria-label="Editar carro">✎</button>`:''}</li>`}).join('')}</ul>`:'<p class="small muted" style="margin:0">¿Tienes carro? Ofrece lugares y los demás se apuntan.</p>'}
   </div></section>`;
-  return `<div class="head"><div><span class="gr" aria-hidden="true">ΟΔΟΣ</span><h1>${esc(p.title)}</h1><p>${[JEV_PSTATE[st],p.when?'Para '+fDate(p.when):'',p.place].filter(Boolean).map(esc).join(' · ')}</p></div>
-    <div class="row"><button class="btn ghost" data-jev="gotoprops">← Propuestas</button>
-      ${ME&&jevPropOpen(p)?`<button class="btn ${iVote?'primary':''}" data-jev="pvote" data-id="${esc(p.id)}">${iVote?'✓ Votaste':'▲ Votar'} · ${votes.length}</button>`:''}
-      <button class="btn" data-jev="lcopy" data-id="${esc(p.id)}">Copiar lista para WhatsApp</button>${p.actId&&byId('jevacts',p.actId)?`<button class="btn" data-jev="plan" data-id="${esc(p.actId)}">Ver plan</button>`:''}</div></div>
-    ${p.desc?`<p class="jv-notes" style="margin:0 0 16px">${esc(p.desc)}</p>`:''}
+  return `<div class="head"><div><span class="gr" aria-hidden="true">ΟΔΟΣ</span><h1>${esc(p.title)}</h1><p>${(isAct?['Logística y precios',JEV_KIND[p.kind]||'Actividad',fDate(p.date),p.time?jevTime(p.time):'',p.place]:[JEV_PSTATE[st],p.when?'Para '+fDate(p.when):'',p.place]).filter(Boolean).map(esc).join(' · ')}</p></div>
+    <div class="row">${isAct?`<button class="btn ghost" data-jev="back">← Actividades</button>${ME&&p.date>=TODAY?`<button class="btn ${iGo?'primary':''}" data-jev="go" data-id="${esc(p.id)}">${iGo?'✓ Voy':'Voy a ir'} · ${going.length}</button>`:''}<button class="btn" data-jev="plan" data-id="${esc(p.id)}">Ver plan</button>`:'<button class="btn ghost" data-jev="gotoprops">← Propuestas</button>'}
+      ${!isAct&&ME&&jevPropOpen(p)?`<button class="btn ${iVote?'primary':''}" data-jev="pvote" data-id="${esc(p.id)}">${iVote?'✓ Votaste':'▲ Votar'} · ${votes.length}</button>`:''}
+      <button class="btn" data-jev="lcopy" data-id="${esc(p.id)}">Copiar lista para WhatsApp</button>${!isAct&&p.actId&&byId('jevacts',p.actId)?`<button class="btn" data-jev="plan" data-id="${esc(p.actId)}">Ver plan</button>`:''}</div></div>
+    ${(isAct?p.notes:p.desc)?`<p class="jv-notes" style="margin:0 0 16px">${esc(isAct?p.notes:p.desc)}</p>`:''}
     <div class="grid2"><div class="stack"><section class="panel"><div class="panel-h"><h2>Lista de compras y materiales</h2>${ME?`<button class="btn primary sm" data-jev="litadd" data-id="${esc(p.id)}">Agregar</button>`:''}</div><div class="panel-b">${list}</div></section></div>
     <div class="stack">${budget}${meet}</div></div>`;
 }
@@ -322,21 +333,21 @@ function jevEditLItem(p,it={}){
     {id:'link',label:'Link de la tienda (opcional)',type:'url',value:it.link,ph:'https://…'}],
     onSave:async v=>{
       if(v.link&&!isUrl(v.link)){toast('El link no parece válido.');return}
-      const cur=byId('jevprops',p.id)||p,L=[...jevPItems(cur)];
+      const cur=jevLGet(p.id)||p,L=[...jevPItems(cur)];
       const n={id:it.id||uid(),done:!!it.done,...it,name:v.name.trim(),qty:Math.max(1,Number(v.qty)||1),price:v.price===''?'':Math.max(0,Number(v.price)||0),cat:v.cat,who:v.who,link:v.link.trim()};
       const i=L.findIndex(x=>x.id===n.id);if(i>=0)L[i]=n;else L.push(n);
-      await save('jevprops',{...cur,items:L})},
-    onDelete:it.id&&(ed||it.who===ME)?async()=>{const cur=byId('jevprops',p.id)||p;await save('jevprops',{...cur,items:jevPItems(cur).filter(x=>x.id!==it.id)})}:null});
+      await jevLSave({...cur,items:L})},
+    onDelete:it.id&&(ed||it.who===ME)?async()=>{const cur=jevLGet(p.id)||p;await jevLSave({...cur,items:jevPItems(cur).filter(x=>x.id!==it.id)})}:null});
 }
 async function jevLItemPatch(pid,itemId,fn){
-  const p=byId('jevprops',pid);if(!p||!ME)return;
-  await save('jevprops',{...p,items:jevPItems(p).map(x=>x.id===itemId?fn(x):x)});render();
+  const p=jevLGet(pid);if(!p||!ME)return;
+  await jevLSave({...p,items:jevPItems(p).map(x=>x.id===itemId?fn(x):x)});render();
 }
 
 function jevEditBudget(p){
   openForm({title:'Ajustar presupuesto',saveLabel:'Guardar',intro:`<div class="info"><b>Costo total: ${esc(jevMoney(jevPTotal(p)))}</b><span>Si dejas vacíos los campos, la cuota se calcula con el total entre los votos.</span></div>`,fields:[
     {type:'pair',fields:[{id:'people',label:'Personas esperadas',type:'number',value:p.people??''},{id:'fee',label:'Cuota fija por persona ($)',type:'number',value:p.fee??''}]}],
-    onSave:async v=>{const cur=byId('jevprops',p.id)||p;await save('jevprops',{...cur,people:v.people===''?'':Math.max(1,Math.round(Number(v.people)||1)),fee:v.fee===''?'':Math.max(0,Number(v.fee)||0)})}});
+    onSave:async v=>{const cur=jevLGet(p.id)||p;await jevLSave({...cur,people:v.people===''?'':Math.max(1,Math.round(Number(v.people)||1)),fee:v.fee===''?'':Math.max(0,Number(v.fee)||0)})}});
 }
 function jevEditMeet(p){
   const m=p.meet||{};
@@ -344,25 +355,25 @@ function jevEditMeet(p){
     {id:'place',label:'Punto de encuentro (dirección o link de Maps)',value:m.place,ph:'Frente al templo · https://maps.app.goo.gl/…'},
     {type:'pair',fields:[{id:'time',label:'Hora de salida',type:'time',value:m.time},{id:'back',label:'Hora de regreso',type:'time',value:m.back}]},
     {id:'bring',label:'Qué lleva cada quien',type:'textarea',value:m.bring,ph:'Biblia, ropa cómoda, bloqueador, $5 para la entrada…'}],
-    onSave:async v=>{const cur=byId('jevprops',p.id)||p;await save('jevprops',{...cur,meet:{place:v.place,time:v.time,back:v.back,bring:v.bring}})}});
+    onSave:async v=>{const cur=jevLGet(p.id)||p;await jevLSave({...cur,meet:{place:v.place,time:v.time,back:v.back,bring:v.bring}})}});
 }
 function jevEditRide(p,r={}){
   openForm({title:r.id?'Mi carro':'Ofrecer mi carro',saveLabel:'Guardar',fields:[
     {type:'pair',fields:[{id:'seats',label:'Lugares libres',type:'number',value:r.seats??3},{id:'from',label:'Sale de (opcional)',value:r.from,ph:'Colonia, punto…'}]}],
-    onSave:async v=>{const cur=byId('jevprops',p.id)||p,L=[...jevPRides(cur)];const n={id:r.id||uid(),driver:r.driver||ME,seats:Math.max(1,Math.round(Number(v.seats)||1)),from:v.from};
-      const i=L.findIndex(x=>x.id===n.id);if(i>=0)L[i]=n;else L.push(n);await save('jevprops',{...cur,rides:L})},
-    onDelete:r.id?async()=>{const cur=byId('jevprops',p.id)||p;const riders={...(cur.riders||{})};delete riders[r.id];await save('jevprops',{...cur,rides:jevPRides(cur).filter(x=>x.id!==r.id),riders})}:null,delLabel:'Quitar carro'});
+    onSave:async v=>{const cur=jevLGet(p.id)||p,L=[...jevPRides(cur)];const n={id:r.id||uid(),driver:r.driver||ME,seats:Math.max(1,Math.round(Number(v.seats)||1)),from:v.from};
+      const i=L.findIndex(x=>x.id===n.id);if(i>=0)L[i]=n;else L.push(n);await jevLSave({...cur,rides:L})},
+    onDelete:r.id?async()=>{const cur=jevLGet(p.id)||p;const riders={...(cur.riders||{})};delete riders[r.id];await jevLSave({...cur,rides:jevPRides(cur).filter(x=>x.id!==r.id),riders})}:null,delLabel:'Quitar carro'});
 }
 async function jevToggleSeat(pid,rid){
-  const p=byId('jevprops',pid);if(!p||!ME)return;const riders={...(p.riders||{})};
+  const p=jevLGet(pid);if(!p||!ME)return;const riders={...(p.riders||{})};
   const was=(riders[rid]||[]).includes(ME);for(const k of Object.keys(riders))riders[k]=(riders[k]||[]).filter(x=>x!==ME);
   const r=jevPRides(p).find(x=>x.id===rid);
   if(!was){if(r&&jevPRiders({...p,riders},rid).length>=(Number(r.seats)||0)){toast('Ese carro ya está lleno.');return}riders[rid]=[...(riders[rid]||[]),ME]}
-  await save('jevprops',{...p,riders});render();
+  await jevLSave({...p,riders});render();
 }
 async function jevTogglePaid(pid,who){
-  const p=byId('jevprops',pid);if(!p||!jevMgr())return;const s=new Set(p.paid||[]);s.has(who)?s.delete(who):s.add(who);
-  await save('jevprops',{...p,paid:[...s]});render();
+  const p=jevLGet(pid);if(!p||!jevMgr())return;const s=new Set(p.paid||[]);s.has(who)?s.delete(who):s.add(who);
+  await jevLSave({...p,paid:[...s]});render();
 }
 function jevListText(p){
   const m=p.meet||{};
@@ -375,7 +386,7 @@ function jevListText(p){
     `\n\nArca · JEV+`;
 }
 async function jevListCopy(pid){
-  const p=byId('jevprops',pid);if(!p)return;const txt=jevListText(p);
+  const p=jevLGet(pid);if(!p)return;const txt=jevListText(p);
   try{await navigator.clipboard.writeText(txt);toast('Lista copiada: pégala en WhatsApp.')}
   catch(_){window.open('https://wa.me/?text='+encodeURIComponent(txt),'_blank','noopener')}
 }
@@ -564,7 +575,7 @@ document.addEventListener('click',e=>{
   if(k==='pcopy')return jevPropsCopy();
   if(k==='gotoprops'){ui.jevActTab='props';go('actividades');return}
   if(k==='popen'){ui.jevPropId=id;go('propuesta');return}
-  const P=()=>byId('jevprops',id),IT=()=>{const p=P();return p&&jevPItems(p).find(x=>x.id===b.dataset.item)};
+  const P=()=>jevLGet(id),IT=()=>{const p=P();return p&&jevPItems(p).find(x=>x.id===b.dataset.item)};
   if(k==='litadd'){const p=P();if(p&&ME)jevEditLItem(p);return}
   if(k==='litedit'){const p=P(),it=IT();if(p&&it&&(jevPMayEdit(p)||it.who===ME))jevEditLItem(p,it);return}
   if(k==='litdone')return jevLItemPatch(id,b.dataset.item,x=>({...x,done:!x.done}));
@@ -659,7 +670,7 @@ function vJevCulto(){
       ${mgr&&wa?`<a class="btn ghost sm no-print" href="https://wa.me/${wa}?text=${encodeURIComponent(msg)}" target="_blank" rel="noopener">Avisar</a>`:''}${mgr?`<button class="btn ghost sm no-print" data-jev="asgedit" data-id="${esc(a.id)}" data-asg="${esc(x.id)}">Editar</button>`:''}</li>`}).join('')}</ul>`
     :`<div class="empty" style="padding:14px"><b>Nadie programado todavía</b><p class="muted" style="margin:6px 0 0">${mgr?'Agrega a quien sirve en este culto.':'Los líderes todavía no asignan al equipo.'}</p></div>`;
   return `<div class="head no-print"><div><span class="gr" aria-hidden="true">ΤΑΞΙΣ</span><h1>${esc(a.title)}</h1><p>${[fLong(a.date),a.time?'Empieza '+jevTime(a.time):'',a.place].filter(Boolean).map(esc).join(' · ')}</p></div>
-    <div class="row"><button class="btn ghost" data-jev="back">← Actividades</button>${mgr?`<button class="btn" data-jev="planedit" data-id="${esc(a.id)}">Editar datos</button><button class="btn" data-jev="dup" data-id="${esc(a.id)}">Copiar a la semana siguiente</button>`:''}<button class="btn" data-jev="plancopy" data-id="${esc(a.id)}">Copiar para WhatsApp</button><button class="btn" data-jev="planprint">Imprimir</button></div></div>
+    <div class="row"><button class="btn ghost" data-jev="back">← Actividades</button>${mgr?`<button class="btn" data-jev="planedit" data-id="${esc(a.id)}">Editar datos</button><button class="btn" data-jev="dup" data-id="${esc(a.id)}">Copiar a la semana siguiente</button>`:''}${jevLBtn(a)}<button class="btn" data-jev="plancopy" data-id="${esc(a.id)}">Copiar para WhatsApp</button><button class="btn" data-jev="planprint">Imprimir</button></div></div>
     ${a.notes?`<div class="panel panel-b" style="margin-bottom:16px;white-space:pre-wrap">${esc(a.notes)}</div>`:''}
     <div class="sc-print"><h2 class="sc-ptitle">${esc(a.title)} · ${esc(fLong(a.date))}</h2><div class="grid2">
       <section class="panel"><div class="panel-h"><h2>Orden del culto</h2>${mgr?`<div class="row no-print"><button class="btn sm" data-jev="itemadd" data-id="${esc(a.id)}" data-kind="item">+ Parte</button><button class="btn sm ghost" data-jev="itemadd" data-id="${esc(a.id)}" data-kind="header">+ Encabezado</button><button class="btn sm ghost" data-jev="itemtpl" data-id="${esc(a.id)}">Partes comunes</button></div>`:''}</div>${itemsHtml}</section>
