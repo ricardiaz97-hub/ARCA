@@ -522,3 +522,20 @@ html.lite .evb-st>*,html.lite .evcd li{backdrop-filter:none;-webkit-backdrop-fil
 .evsongs-a{display:flex;align-items:center;gap:8px;flex:none;margin-left:auto}
 .evgrid .panel>:is(.evp,.evm-l,.evsongs-l,.evcalls,.evrun,.evteam-l,.evlooks,.evpal,.evpins,.evshirt-img,.evm-win,.evh3,.evm-bar.big,.row,p.small){margin-left:16px;margin-right:16px}
 .evgrid .panel>:last-child{margin-bottom:16px}
+
+/* ---------- Programar voluntario: tarjetas con esquinas cortadas ---------- */
+.ap-t,.ap-chip,.ap-c{border-radius:0;border:0;background:rgba(255,255,255,.06);box-shadow:inset 0 0 0 1px var(--line-strong);font-family:var(--f-display);letter-spacing:.06em;
+  clip-path:polygon(8px 0,100% 0,100% calc(100% - 8px),calc(100% - 8px) 100%,0 100%,0 8px)}
+.ap-c{font-family:inherit;letter-spacing:0;clip-path:polygon(0 0,calc(100% - 12px) 0,100% 12px,100% 100%,12px 100%,0 calc(100% - 12px))}
+.ap-chip.add,.ap-c.ap-add{background:none}
+.ap-c.ap-add{box-shadow:inset 0 0 0 1px var(--line-strong)}
+.ap .drawer-h h2{font-size:1.25rem}
+.ap-t[aria-pressed="true"]{background:linear-gradient(180deg,var(--acc-hi),var(--acc));color:#120A06;box-shadow:inset 0 -3px 0 rgba(0,0,0,.3),0 0 18px var(--acc-glow)}
+.ap-c[aria-pressed="true"]{background:linear-gradient(160deg,color-mix(in srgb,var(--acc) 26%,transparent),color-mix(in srgb,var(--acc) 8%,transparent));box-shadow:inset 0 0 0 1.5px var(--acc),0 0 22px -8px var(--acc-glow)}
+.ap-c[aria-pressed="true"] .ap-ph{box-shadow:0 0 0 2px #0A0808,0 0 0 3.5px var(--acc),0 0 14px var(--acc-glow)}
+.ap-ck{background:var(--acc);color:#120A06}
+.ap-chip[aria-pressed="true"]{background:var(--acc);color:#120A06;box-shadow:inset 0 -2px 0 rgba(0,0,0,.25)}
+.ap-x:hover{color:var(--fg)}
+.ap-opts,.ap-tray{background:rgba(255,255,255,.03);border-top-color:var(--glass-line)}
+.ap-ph{box-shadow:0 0 0 2px var(--surface)}
+@media (hover:hover) and (pointer:fine){.ap-c:hover,.ap-t:hover,.ap-chip:hover{box-shadow:inset 0 0 0 1px var(--acc)}}
