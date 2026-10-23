@@ -336,6 +336,41 @@ tbody tr:last-child td{border-bottom:0}
 .checks label{display:inline-flex;align-items:center;gap:6px;border:1px solid var(--line-strong);border-radius:99px;padding:4px 11px;font-size:.84rem;cursor:pointer;transition:background-color 120ms ease,border-color 120ms ease}
 .checks label:has(input:checked){background:var(--accent-soft);border-color:var(--accent-line);color:var(--accent)}
 .checks input{accent-color:var(--gold);margin:0}
+/* Programar voluntario (tarjetas) */
+.ap-sub{margin:2px 0 0;font-size:.8rem;color:var(--muted)}
+.ap-teams{display:flex;flex-wrap:wrap;gap:6px}
+.ap-t{border:1px solid var(--line-strong);background:transparent;color:var(--fg);padding:8px 14px;min-height:40px;font:inherit;font-weight:700;font-size:.82rem;letter-spacing:.05em;text-transform:uppercase;cursor:pointer;border-radius:8px;transition:background-color 120ms ease,border-color 120ms ease}
+.ap-t[aria-pressed="true"]{background:var(--gold);color:var(--primary-fg,#fff);border-color:transparent}
+.ap-t b{margin-left:7px;font-weight:800;opacity:.85}
+.ap-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(104px,1fr));gap:8px}
+.ap-c{position:relative;display:flex;flex-direction:column;align-items:center;justify-content:flex-start;gap:6px;padding:12px 6px 10px;min-height:106px;border:1px solid var(--line-strong);border-radius:10px;background:var(--sunken);color:var(--fg);font:inherit;cursor:pointer;text-align:center;transition:background-color 120ms ease,border-color 120ms ease}
+.ap-c[aria-pressed="true"]{border-color:var(--gold);background:var(--accent-soft);box-shadow:inset 0 0 0 1px var(--gold)}
+.ap-c.ya{opacity:.6}
+.ap-ph{width:44px;height:44px;border-radius:50%;flex:none;object-fit:cover;display:inline-grid;place-items:center;color:#fff;font-weight:800;font-size:.9rem}
+.ap-n{font-size:.82rem;font-weight:600;line-height:1.15;overflow-wrap:anywhere;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}
+.ap-s{font-size:.7rem;color:var(--muted);font-weight:500}
+.ap-ck{display:none;position:absolute;top:6px;right:6px;width:19px;height:19px;border-radius:50%;background:var(--gold);color:var(--primary-fg,#fff);place-items:center;font-size:.7rem;font-weight:900}
+.ap-c[aria-pressed="true"] .ap-ck{display:grid}
+.ap-opts{display:grid;gap:6px;padding:8px 20px;border-top:1px solid var(--line)}
+.ap-opts .ap-chip{min-height:32px;padding:3px 12px}
+.ap .drawer-h h2{font-size:1.25rem}
+.ap-nm{display:flex;align-items:baseline;flex-wrap:wrap;gap:4px 8px}
+.ap-add{border-style:dashed;background:none;color:var(--muted)}
+.ap-add .ap-n{font-weight:500}
+.ap-slot{display:grid;gap:6px;padding:4px 0}
+.ap-row{display:flex;flex-wrap:wrap;align-items:center;gap:6px}
+.ap-lbl{font-size:.78rem;font-weight:500;color:var(--muted);margin-right:2px}
+.ap-chip{border:1px solid var(--line-strong);background:transparent;color:var(--fg);padding:5px 12px;min-height:36px;font:inherit;font-size:.84rem;border-radius:99px;cursor:pointer;transition:background-color 120ms ease,border-color 120ms ease}
+.ap-chip[aria-pressed="true"]{background:var(--accent-soft);border-color:var(--accent-line);color:var(--accent)}
+.ap-chip.add{border-style:dashed;color:var(--muted)}
+.ap-tray{display:grid;gap:8px;padding:8px 20px 10px;border-top:1px solid var(--line);max-height:34vh;overflow-y:auto;align-content:start}
+.ap-tr{display:grid;grid-template-columns:auto 1fr auto;gap:10px;align-items:start}
+.ap-tr .ap-ph{width:34px;height:34px;font-size:.74rem;margin-top:2px}
+.ap-tb{display:grid;gap:4px;min-width:0}
+.ap-tb b{font-size:.9rem}
+.ap-x{border:0;background:none;color:var(--muted);cursor:pointer;min-width:36px;min-height:36px;font-size:.95rem}
+.ap-hole{background:transparent;border:1.5px dashed var(--line-strong);color:var(--muted)}
+.ap :is(.ap-t,.ap-c,.ap-chip,.ap-x):focus-visible{outline:2px solid var(--gold);outline-offset:2px}
 .swatches{display:flex;gap:10px}
 .swatches label{cursor:pointer;display:grid;place-items:center}
 .swatches input{position:absolute;opacity:0;pointer-events:none}
@@ -1687,6 +1722,7 @@ function editPerson(p={}){
     {id:'titles',label:'Títulos',type:'multi',value:p.titles||[],options:allTitles().map(t=>[t,t])},
     {id:'titleOther',label:'Otro título',value:'',ph:'Escribe uno nuevo (si son varios, sepáralos con comas)'},
     {id:'teamIds',label:'Equipos',type:'multi',value:p.teamIds||[],options:teamOpts(),none:'Crea equipos en la sección Equipos.'},
+    {id:'positions',label:'Posiciones que puede cubrir (salen primero al programarlo)',type:'multi',value:p.positions||[],options:[...new Set([...S.teams.flatMap(t=>t.positions||[]),...(p.positions||[])])].map(x=>[x,x]),none:'Define las posiciones en cada equipo.'},
     {id:'status',label:'Estado',type:'select',value:p.status||'activo',options:[['activo','Activo'],['inactivo','Inactivo']]},
     {id:'always',label:'Va a todos los servicios',type:'select',value:p.always?'1':'',options:[['','No'],['1','Sí · queda confirmado en todos (ej. Multimedia)']]},
     {type:'html',html:`<div class="field"><span class="lbl">Color en el rol de voces</span><div class="swatches">${PCOL.map((c,i)=>`<label title="Color ${i+1}"><input type="radio" name="f_color" value="${i}" ${(p.color!=null&&p.color!==''?Number(p.color):-1)===i?'checked':''}><span style="background:${c}"></span></label>`).join('')}</div></div>`},
@@ -1774,7 +1810,106 @@ function editItem(svc,item,kind){
     },
     onDelete:item?()=>save('services',{...svc,items:(svc.items||[]).filter(x=>x.id!==it.id)}):null});
 }
+/* ---------- Programar voluntario: tarjetas de personas y roles en chips ---------- */
+const AP_ST=[['pendiente','Pendiente'],['confirmado','Confirmado']];
+/* Posiciones que una persona puede cubrir en un equipo: las que se marcaron en su perfil + las que ya ha servido (historial) */
+function apKnown(p,t){
+  const m=new Map();
+  const add=(pos,d)=>{pos=String(pos||'').trim();if(!pos)return;const day=d&&d<=TODAY?d:'';if(!m.has(pos)||day>m.get(pos))m.set(pos,day)};
+  (p.positions||[]).forEach(x=>add(x,''));
+  S.services.forEach(s=>(s.assignments||[]).forEach(a=>{if(a.personId===p.id&&(!a.teamId||a.teamId===t.id))add(a.position,s.date)}));
+  const tp=t.positions||[];
+  return [...m].filter(([pos])=>!tp.length||tp.includes(pos)).map(([pos,d])=>({pos,d}));
+}
+/* main = roles que suele hacer; rest = el resto de posiciones del equipo; def = el que se marca solo (el último que usó) */
+function apRoles(p,t){
+  const tp=t.positions||[],known=apKnown(p,t);
+  const dated=known.filter(x=>x.d).sort((a,b)=>b.d.localeCompare(a.d));
+  if(!tp.length){const k=known.map(x=>x.pos);return {main:k.length?k:[t.name],rest:[],def:dated.length?dated[0].pos:(k.length>1?'':(k[0]||t.name))}}
+  const ks=new Set(known.map(x=>x.pos)),main=tp.filter(x=>ks.has(x)),rest=tp.filter(x=>!ks.has(x));
+  if(!main.length)return {main:tp,rest:[],def:tp.length===1?tp[0]:''};
+  return {main,rest,def:dated.length?dated[0].pos:(main.length===1?main[0]:'')};
+}
+function openAssignPicker(svc){
+  const teams=sortBy(S.teams,t=>t.name);
+  if(!teams.length){toast('Primero crea un equipo en la sección Equipos.');return}
+  const st={tid:teams[0].id,status:'pendiente',sel:new Map(),open:[],openUi:false,more:new Set()};
+  const key=(pid,tid)=>pid+'\u0001'+tid;
+  const team=id=>byId('teams',id);
+  const total=()=>[...st.sel.values()].reduce((n,e)=>n+e.pos.size,0)+st.open.length;
+  const ph=p=>p.photo?`<img class="ap-ph" src="${assetUrl(p.photo)}" alt="">`:`<span class="ap-ph bg${colorOf(p.id)}" aria-hidden="true">${esc(initials(p.name))}</span>`;
+  drawerOpen=true;clearTimeout(closeDrawer.t);$('#drawerRoot').classList.remove('closing');
+  $('#drawerRoot').innerHTML=`<div class="scrim" data-close></div>
+  <form class="drawer ap" role="dialog" aria-modal="true" aria-label="Programar voluntario" id="apForm" novalidate>
+    <div class="grab" aria-hidden="true"></div>
+    <div class="drawer-h"><div><h2>Programar voluntario</h2><p class="ap-sub">${esc(fDate(svc.date))} · ${esc(svc.title)}</p></div><button type="button" class="icon-btn" data-close aria-label="Cerrar">✕</button></div>
+    <div class="drawer-b"><div class="ap-teams" id="apTeams" role="group" aria-label="Equipo"></div><div class="ap-grid" id="apGrid"></div></div>
+    <div class="ap-opts" id="apOpts"></div>
+    <div class="ap-tray" id="apTray" aria-live="polite"></div>
+    <div class="drawer-f"><span class="sp"></span><button type="button" class="btn ghost" data-close>Cancelar</button><button class="btn primary" type="submit" id="apGo">Guardar</button></div>
+  </form>`;
+  const form=$('#apForm'),$t=$('#apTeams'),$g=$('#apGrid'),$o=$('#apOpts'),$y=$('#apTray'),$go=$('#apGo');
+  form.querySelectorAll('[data-close]').forEach(b=>b.onclick=closeDrawer);
+  $('#drawerRoot .scrim').onclick=closeDrawer;
+  function paint(){
+    const f=document.activeElement&&form.contains(document.activeElement)?document.activeElement.dataset.fk:null;
+    $t.innerHTML=teams.map(t=>{const n=[...st.sel.values()].filter(e=>e.tid===t.id).length+st.open.filter(o=>o.tid===t.id).length;
+      return `<button type="button" class="ap-t" data-ap="team" data-tid="${esc(t.id)}" data-fk="t${esc(t.id)}" aria-pressed="${t.id===st.tid}">${esc(t.name)}${n?`<b>${n}</b>`:''}</button>`}).join('');
+    const tm=team(st.tid),mem=sortBy(S.people.filter(p=>(p.teamIds||[]).includes(st.tid)&&p.status!=='inactivo'),p=>p.name);
+    $g.innerHTML=mem.length?mem.map(p=>{const on=st.sel.has(key(p.id,st.tid));
+      const ya=(svc.assignments||[]).filter(a=>a.personId===p.id&&a.status!=='declinado').map(a=>a.position);
+      return `<button type="button" class="ap-c${ya.length&&!on?' ya':''}" data-ap="card" data-pid="${esc(p.id)}" data-fk="c${esc(p.id)}" aria-pressed="${on}">${ph(p)}<span class="ap-n">${esc(p.name)}</span>${ya.length?`<span class="ap-s">Ya: ${esc([...new Set(ya)].join(', '))}</span>`:''}<span class="ap-ck" aria-hidden="true">✓</span></button>`}).join('')
+      :`<p class="muted" style="grid-column:1/-1;margin:0">Este equipo todavía no tiene miembros. Agrégalos en Equipos.</p>`;
+    const openPos=tm&&tm.positions&&tm.positions.length?tm.positions:[tm?tm.name:'Equipo'];
+    $g.innerHTML+=`<button type="button" class="ap-c ap-add" data-ap="openui" data-fk="ou" aria-expanded="${st.openUi}"><span class="ap-ph ap-hole" aria-hidden="true">＋</span><span class="ap-n">Posición abierta</span></button>`
+      +(st.openUi?`<div class="ap-slot" style="grid-column:1/-1"><span class="ap-lbl">Hueco en ${esc(tm?tm.name:'')}:</span><div class="ap-row">${openPos.map(x=>`<button type="button" class="ap-chip" data-ap="addopen" data-pos="${esc(x)}" data-fk="o${esc(x)}">${esc(x)}</button>`).join('')}</div></div>`:'');
+    $o.innerHTML=`<div class="ap-row"><span class="ap-lbl">Estado</span>${AP_ST.map(([v,l])=>`<button type="button" class="ap-chip" data-ap="st" data-v="${v}" data-fk="s${v}" aria-pressed="${st.status===v}">${l}</button>`).join('')}</div>`;
+    const rows=[...st.sel.values()].map(e=>{const p=byId('people',e.pid),t=team(e.tid);if(!p||!t)return '';
+      const r=apRoles(p,t),k=key(e.pid,e.tid),showRest=st.more.has(k)||[...e.pos].some(x=>r.rest.includes(x));
+      const chips=[...r.main,...(showRest?r.rest:[])].map(x=>`<button type="button" class="ap-chip" data-ap="role" data-pid="${esc(e.pid)}" data-tid="${esc(e.tid)}" data-pos="${esc(x)}" data-fk="r${esc(k)}${esc(x)}" aria-pressed="${e.pos.has(x)}">${esc(x)}</button>`).join('')
+        +(r.rest.length&&!showRest?`<button type="button" class="ap-chip add" data-ap="more" data-pid="${esc(e.pid)}" data-tid="${esc(e.tid)}" data-fk="m${esc(k)}" aria-label="Ver otras posiciones">＋</button>`:'');
+      return `<div class="ap-tr">${ph(p)}<div class="ap-tb"><div class="ap-nm"><b>${esc(p.name)}</b>${teams.length>1?`<span class="ap-s">${esc(t.name)}</span>`:''}</div><div class="ap-row">${chips}</div></div><button type="button" class="ap-x" data-ap="drop" data-pid="${esc(e.pid)}" data-tid="${esc(e.tid)}" data-fk="x${esc(k)}" aria-label="Quitar a ${esc(p.name)}">✕</button></div>`}).join('')
+      +st.open.map((o,i)=>`<div class="ap-tr"><span class="ap-ph ap-hole" aria-hidden="true">?</span><div class="ap-tb"><div class="ap-nm"><b>Posición abierta</b><span class="ap-s">${esc((team(o.tid)||{}).name||'')}</span></div><div class="ap-row"><span class="ap-chip" aria-pressed="true">${esc(o.pos)}</span></div></div><button type="button" class="ap-x" data-ap="dropopen" data-i="${i}" data-fk="xo${i}" aria-label="Quitar posición abierta">✕</button></div>`).join('');
+    $y.innerHTML=rows||'<p class="muted" style="margin:0;font-size:.84rem">Toca a quién vas a programar.</p>';
+    const n=total();$go.textContent=n?`Guardar ${n}`:'Guardar';
+    if(st.toEnd){$y.scrollTop=$y.scrollHeight;st.toEnd=false}
+    if(f){const el=form.querySelector(`[data-fk="${CSS.escape(f)}"]`);if(el)el.focus({preventScroll:true})}
+  }
+  form.addEventListener('click',e=>{
+    const b=e.target.closest('[data-ap]');if(!b)return;const a=b.dataset.ap,d=b.dataset;
+    if(a==='team')st.tid=d.tid;
+    else if(a==='card'){const k=key(d.pid,st.tid);if(st.sel.has(k))st.sel.delete(k);else{const p=byId('people',d.pid),t=team(st.tid);if(!p||!t)return;const r=apRoles(p,t);st.sel.set(k,{pid:d.pid,tid:st.tid,pos:new Set(r.def?[r.def]:[])});st.toEnd=true}}
+    else if(a==='role'){const en=st.sel.get(key(d.pid,d.tid));if(!en)return;if(en.pos.has(d.pos))en.pos.delete(d.pos);else en.pos.add(d.pos)}
+    else if(a==='more')st.more.add(key(d.pid,d.tid));
+    else if(a==='drop')st.sel.delete(key(d.pid,d.tid));
+    else if(a==='st')st.status=d.v;
+    else if(a==='openui')st.openUi=!st.openUi;
+    else if(a==='addopen'){st.open.push({tid:st.tid,pos:d.pos});st.toEnd=true}
+    else if(a==='dropopen')st.open.splice(Number(d.i),1);
+    paint();
+  });
+  form.onsubmit=async e=>{
+    e.preventDefault();
+    const miss=[...st.sel.values()].find(x=>!x.pos.size);
+    if(miss){toast(`Elige el rol de ${pName(miss.pid)}.`);return}
+    const rows=[];
+    for(const x of st.sel.values())for(const pos of x.pos)rows.push({id:uid(),teamId:x.tid,position:pos,personId:x.pid,status:st.status});
+    st.open.forEach(o=>rows.push({id:uid(),teamId:o.tid,position:o.pos,personId:'',status:'pendiente'}));
+    if(!rows.length){toast('Toca a quién vas a programar.');return}
+    const old=svc.assignments||[];
+    const fresh=rows.filter(r=>!(r.personId&&old.some(a=>a.personId===r.personId&&a.position===r.position)));
+    const skipped=rows.length-fresh.length;
+    const warn=[...new Set(fresh.map(r=>r.personId).filter(Boolean))].map(pid=>({pid,o:S.services.find(s=>s.id!==svc.id&&s.date===svc.date&&(s.assignments||[]).some(x=>x.personId===pid))})).find(x=>x.o);
+    closeDrawer();
+    if(fresh.length){const ok=await save('services',{...svc,assignments:[...old,...fresh]});if(!ok){render();return}}
+    toast(warn?`Aviso: ${pName(warn.pid)} también sirve ese día en “${warn.o.title}”.`:(fresh.length?`Listo: ${fresh.length} ${fresh.length===1?'asignación':'asignaciones'}${skipped?` (${skipped} ya estaba${skipped===1?'':'n'})`:''}.`:'Ya estaban programados.'));
+    render();
+  };
+  paint();
+  const first=$g.querySelector('button');if(first&&matchMedia('(hover:hover) and (pointer:fine)').matches)first.focus({preventScroll:true});
+}
 function editAssignment(svc,a){
+  if(!a)return openAssignPicker(svc);
   const it=a||{id:uid(),teamId:S.teams[0]?.id||'',position:'',personId:'',status:'pendiente'};
   const positions=[...new Set(S.teams.flatMap(t=>t.positions||[]))];
   openForm({title:a?'Editar asignación':'Programar voluntario',fields:[
