@@ -130,14 +130,16 @@ function evGcal(ev){const a=evAt(ev),b=new Date(a.getTime()+2*36e5);const f=d=>d
 /* Quién lleva cada canción: voces líderes (puede ser más de una) y batería.
    Se guarda en el evento (ev.songRoles[clave]); si no se eligió nada, usa a quienes dirigen y a la batería del culto. */
 /* A TU LADO: quién dirige y quién toca la batería, por número de canción (orden del setlist). Lo que se elija en la ventana de la canción tiene prioridad. */
-const EV_ATL_LEADS=[['Ricardo Vega'],['Andrés Santos'],['Estefania Trejo'],['Yesy Amaya'],['Milena Panameño'],['Armando Bonifacio','Ricardo Vega'],['Andrés Santos','Mario Ortiz'],['Ricardo Vega','Andrés Santos'],['Andrés Santos','Ricardo Vega','Gaby Amaya'],['Yesy Amaya','Rebeca Alas'],['Estefania Trejo','Rebeca Alas','Milena Panameño','Yesy Amaya','Gaby Amaya'],['Andrés Santos','Ricardo Vega'],[],['Andrés Santos','Ricardo Vega']];
-const EV_ATL_DRUMS=n=>n<=6?'Ismael Alas':'Julio Argueta';
-function evPerson(label){const T=norm(label).split(/\s+/).filter(Boolean);if(!T.length)return null;
-  const p=(S.people||[]).find(q=>{const N=norm(q.name).split(/\s+/);return T.every(t=>N.some(n=>n.startsWith(t)))});return p?p.id:null}
+const EV_ATL_LEADS=[['Ricardo'],['Andrés'],['Estefania'],['Yesy'],['Milena'],['Armando','Ricardo'],['Andrés','Mario'],['Ricardo','Andrés'],['Andrés','Ricardo','Gaby'],['Yesy','Rebeca'],['Estefania','Rebeca','Milena','Yesy','Gaby'],['Andrés','Ricardo'],[],['Andrés','Ricardo']];
+const EV_ATL_DRUMS=n=>n<=6?'Ismael':'Julio';
+/* Busca a la persona por nombre (basta el primer nombre; sin importar mayúsculas ni acentos). Si hay dos iguales, la que esté en el equipo del culto. */
+function evPerson(label,team){const T=norm(label).split(/\s+/).filter(Boolean);if(!T.length)return null;
+  const C=(S.people||[]).filter(q=>{const N=norm(q.name).split(/\s+/);return T.every(t=>N.some(n=>n.startsWith(t)))});
+  return ((team&&C.find(q=>team.has(q.id)))||C[0]||{}).id||null}
 function evSongRoles(ev,x){const s=evSvc(ev),sr=(ev.songRoles||{})[x.k];
   if(sr)return {leads:(sr.leads||[]).filter(p=>byId('people',p)),drums:(sr.drums?[sr.drums]:[]).filter(p=>byId('people',p))};
   if(norm(ev.title)==='a tu lado'){const n=evSongs(ev).findIndex(y=>y.k===x.k)+1;
-    if(n>=1&&n<=EV_ATL_LEADS.length)return {leads:EV_ATL_LEADS[n-1].map(evPerson).filter(Boolean),drums:[evPerson(EV_ATL_DRUMS(n))].filter(Boolean)}}
+    if(n>=1&&n<=EV_ATL_LEADS.length){const T=new Set((s?s.assignments||[]:[]).map(a=>a.personId));return {leads:EV_ATL_LEADS[n-1].map(l=>evPerson(l,T)).filter(Boolean),drums:[evPerson(EV_ATL_DRUMS(n),T)].filter(Boolean)}}}
   const A=s?(s.assignments||[]).filter(a=>a.personId&&a.status!=='declinado'):[];
   const leads=[...new Set(A.filter(isLead).map(a=>a.personId))];
   const drums=[...new Set(A.filter(a=>/bater[ií]a/i.test(a.position||'')).map(a=>a.personId))].slice(0,1);
