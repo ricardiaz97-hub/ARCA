@@ -539,3 +539,21 @@ html.lite .evb-st>*,html.lite .evcd li{backdrop-filter:none;-webkit-backdrop-fil
 .ap-opts,.ap-tray{background:rgba(255,255,255,.03);border-top-color:var(--glass-line)}
 .ap-ph{box-shadow:0 0 0 2px var(--surface)}
 @media (hover:hover) and (pointer:fine){.ap-c:hover,.ap-t:hover,.ap-chip:hover{box-shadow:inset 0 0 0 1px var(--acc)}}
+
+/* Evento: botón grande al culto, fotos de quién lleva cada canción y su ventana */
+.evgo{display:flex;align-items:center;justify-content:center;gap:10px;width:calc(100% - 32px);margin:2px 16px 14px;padding:16px 18px;font-size:1.05rem;font-weight:700;letter-spacing:.02em;min-height:54px}
+.evsong-open{font:inherit;color:inherit;text-align:left;background:none;border:0;padding:0;cursor:pointer;min-height:44px;justify-content:center}
+.evsong-open b{font-size:1.02rem}
+.evsong-open:hover b,.evsong-open:focus-visible b{color:var(--acc-hi);text-decoration:underline;text-underline-offset:3px}
+.evwho{display:flex;align-items:center;gap:6px;flex:none}
+.evwho-sep{width:1px;align-self:stretch;min-height:26px;background:var(--line-strong);margin:0 4px}
+.evph{flex:none;display:block;width:38px;height:38px;overflow:hidden;background:var(--line-strong);clip-path:polygon(50% 0,100% 50%,50% 100%,0 50%)}
+.evph>img,.evph>span{display:grid;place-items:center;width:100%;height:100%;object-fit:cover;font-size:.8rem;font-weight:700;color:#120A06}
+.evph.big{width:76px;height:76px}
+.evph.big>span{font-size:1.2rem}
+.evsw-meta{display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin:0 0 6px}
+.evsw-s{margin:16px 0}
+.evsw-s h3{font-size:.8rem;letter-spacing:.14em;text-transform:uppercase;color:var(--acc-hi);margin:0 0 10px}
+.evsw-l{list-style:none;margin:0;padding:0;display:flex;flex-wrap:wrap;gap:16px}
+.evsw-p{display:flex;flex-direction:column;align-items:center;gap:4px;text-align:center;min-width:92px}
+@media (max-width:560px){.evsongs-l li{align-items:flex-start}.evwho{order:2}.evsongs-a{margin-left:0;width:100%;flex-wrap:wrap}}

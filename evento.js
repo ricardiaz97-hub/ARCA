@@ -9,7 +9,12 @@ function evActive(){return evEvents().find(x=>x.active!==false&&x.date>=addDays(
 const evCanEdit=()=>!!ME&&(ADMIN()||MANAGERS.includes(ME));
 const evMeId=(ev,pid)=>ev.id+'~'+pid;
 const evMine=(ev,pid=ME)=>pid?byId(EV_COL,evMeId(ev,pid))||null:null;
-const evSvc=ev=>ev&&ev.svcId?svcLookup(ev.svcId):null;
+/* Culto del evento: el vinculado; si el vínculo se perdió o el culto cambió de id, busca el de la misma fecha con el mismo nombre */
+const evSvc=ev=>{if(!ev)return null;
+  if(ev.svcId){const s=svcLookup(ev.svcId);if(s)return s}
+  const t=norm(ev.title||'');if(!t)return null;
+  const m=(S.services||[]).find(x=>!x.cancelled&&x.date===ev.date&&(norm(x.series||'')===t||norm(x.title||'').includes(t)));
+  return m?svcLookup(m.id):null};
 const evImg=a=>!a?'':(isUrl(a)||String(a).startsWith('/'))?a:assetUrl(a);
 const evMoney=n=>'$'+(Number(n)||0).toFixed(2);
 function evAt(ev){const d=parse(ev.date);const [h,m]=String(ev.time||'00:00').split(':').map(Number);d.setHours(h||0,m||0,0,0);return d}
@@ -85,10 +90,10 @@ function vEvento(){const ev=byId(EV_COL,ui.eventoId)||evActive();
 
   /* Setlist para ensayar */
   const songs=evSongs(ev),prac=new Set(me.practiced||[]);
-  const setl=s?`<section class="panel evsongs" id="evSongs"><div class="panel-h"><div><h2>Qué ensayar</h2><span class="muted small">${songs.length?`${songs.filter(x=>prac.has(x.k)).length} de ${songs.length} ensayadas por ti`:'Sin canciones todavía'}</span></div><button class="btn ghost sm" data-svc="${esc(s.id)}">Abrir el culto</button></div>
+  const setl=s?`<section class="panel evsongs" id="evSongs"><div class="panel-h"><div><h2>Qué ensayar</h2><span class="muted small">${songs.length?`${songs.filter(x=>prac.has(x.k)).length} de ${songs.length} ensayadas por ti`:'Sin canciones todavía'}</span></div></div><button class="btn primary evgo" data-svc="${esc(s.id)}">Ver el culto completo <span aria-hidden="true">›</span></button>
     ${ev.rehearseNote?`<p class="evp small" style="margin-top:0">${esc(ev.rehearseNote)}</p>`:''}
     ${songs.length?`<ol class="evsongs-l">${songs.map((x,i)=>{const on=prac.has(x.k);const r=x.row||{};const lis=isUrl(r.version)?r.version:'';const demo=lis?`<a class="btn sm ghost" href="${esc(lis)}" target="_blank" rel="noopener">▶ Escuchar demo</a>`:ev.link&&isUrl(ev.link)?`<a class="btn sm ghost" href="${esc(ev.link)}" target="_blank" rel="noopener">▶ Demo en la página</a>`:'<span class="chip">Demo pendiente</span>';
-      return `<li class="${on?'on':''}"><span class="evsongs-n">${i+1}</span><span class="grow"><b>${esc(x.song)}</b><span class="small">${esc([x.lead,x.artist].filter(Boolean).join(' · '))}</span>${sparks(songTimes(x.song))}</span><span class="evsongs-a">${x.key?`<span class="key">${esc(x.key)}</span>`:''}${demo}${ME?`<button class="evprac" data-evprac="${esc(x.k)}" aria-pressed="${on}">${on?'✓ Ensayada':'Marcar ensayada'}</button>`:''}</span></li>`}).join('')}</ol>`:'<div class="empty">Cuando el culto tenga su setlist, aparecerá aquí para ensayar.</div>'}
+      return `<li class="${on?'on':''}"><span class="evsongs-n">${i+1}</span><button type="button" class="grow evsong-open" data-evsong="${esc(x.k)}" aria-label="Ver detalles de ${esc(x.song)}"><b>${esc(x.song)}</b><span class="small">${esc([x.lead,x.artist].filter(Boolean).join(' · '))}</span>${sparks(songTimes(x.song))}</button>${evWho(ev,x)}<span class="evsongs-a">${x.key?`<span class="key">${esc(x.key)}</span>`:''}${demo}${ME?`<button class="evprac" data-evprac="${esc(x.k)}" aria-pressed="${on}">${on?'✓ Ensayada':'Marcar ensayada'}</button>`:''}</span></li>`}).join('')}</ol>`:'<div class="empty">Cuando el culto tenga su setlist, aparecerá aquí para ensayar.</div>'}
     ${(ev.rehearsals||[]).length?`<h3 class="evh3">Ensayos</h3><ul class="list">${ev.rehearsals.map(r=>`<li><span class="datebox"><small>${esc(fDate(r.date,{month:'short'}))}</small><b>${parse(r.date).getDate()}</b></span><span class="grow"><b>${esc(fDate(r.date,{weekday:'long'}).replace(/^./,c=>c.toUpperCase()))}${r.time?' · '+esc(ampm(r.time)):''}</b>${r.place||r.note?`<span class="small" style="display:block">${esc([r.place,r.note].filter(Boolean).join(' · '))}</span>`:''}</span></li>`).join('')}</ul>`:''}</section>`:'';
 
   /* Horario del día + cronograma */
@@ -119,6 +124,37 @@ function evGcal(ev){const a=evAt(ev),b=new Date(a.getTime()+2*36e5);const f=d=>d
   return 'https://calendar.google.com/calendar/render?action=TEMPLATE&text='+encodeURIComponent(ev.title+(ev.kicker?' · '+ev.kicker:''))+'&dates='+f(a)+'/'+f(b)+'&location='+encodeURIComponent(ev.place||'')+'&details='+encodeURIComponent(ev.tagline||'')}
 
 /* ---------- Datos iniciales (de la reunión de ministerios) ---------- */
+/* Quién lleva cada canción: voces líderes (puede ser más de una) y batería.
+   Se guarda en el evento (ev.songRoles[clave]); si no se eligió nada, usa a quienes dirigen y a la batería del culto. */
+function evSongRoles(ev,x){const s=evSvc(ev),sr=(ev.songRoles||{})[x.k];
+  const A=s?(s.assignments||[]).filter(a=>a.personId&&a.status!=='declinado'):[];
+  const leads=sr&&sr.leads?sr.leads:[...new Set(A.filter(isLead).map(a=>a.personId))];
+  const drums=sr&&sr.drums!=null?(sr.drums?[sr.drums]:[]):[...new Set(A.filter(a=>/bater[ií]a/i.test(a.position||'')).map(a=>a.personId))].slice(0,1);
+  return {leads:leads.filter(p=>byId('people',p)),drums:drums.filter(p=>byId('people',p))}}
+const evWhoFace=(pid,role)=>`<span class="evph" title="${esc(pName(pid))} · ${role}">${evFace(pid)}</span>`;
+function evWho(ev,x){const r=evSongRoles(ev,x);if(!r.leads.length&&!r.drums.length)return '';
+  return `<span class="evwho">${r.leads.map(p=>evWhoFace(p,'Voz líder')).join('')}${r.leads.length&&r.drums.length?'<span class="evwho-sep" aria-hidden="true"></span>':''}${r.drums.map(p=>evWhoFace(p,'Batería')).join('')}</span>`}
+function evSongOpen(ev,k){const all=evSongs(ev),x=all.find(y=>y.k===k);if(!x)return;
+  const i=all.indexOf(x),r=x.row||{},on=((evMine(ev)||{}).practiced||[]).includes(k),R=evSongRoles(ev,x),ed=evCanEdit();
+  const lis=isUrl(r.version)?r.version:ev.link&&isUrl(ev.link)?ev.link:'';
+  const person=(pid,role)=>`<li class="evsw-p"><span class="evph big">${evFace(pid)}</span><b>${esc(pName(pid).split(/\s+/).slice(0,2).join(' '))}</b><span class="small">${role}</span></li>`;
+  const who=(title,ids,role,empty)=>`<section class="evsw-s"><h3>${title}</h3>${ids.length?`<ul class="evsw-l">${ids.map(p=>person(p,role)).join('')}</ul>`:`<p class="muted small">${empty}</p>`}</section>`;
+  drawerOpen=true;clearTimeout(closeDrawer.t);const root=$('#drawerRoot');root.classList.remove('closing');
+  root.innerHTML=`<div class="scrim" data-close></div><div class="drawer evsw" role="dialog" aria-modal="true" aria-label="${esc(x.song)}"><div class="grab" aria-hidden="true"></div>
+    <div class="drawer-h"><h2>${esc(x.song)}</h2><button type="button" class="icon-btn" data-close aria-label="Cerrar">✕</button></div>
+    <div class="drawer-b"><p class="small evsw-meta"><span class="evsongs-n">${i+1}</span>${esc([x.artist,x.lead].filter(Boolean).join(' · '))}${x.key?` <span class="key">${esc(x.key)}</span>`:''}</p>
+      ${who(R.leads.length>1?'Voces líderes':'Voz líder',R.leads,'Voz líder','Todavía no se ha elegido quién dirige esta canción.')}
+      ${who('Batería',R.drums,'Batería','Todavía no se ha elegido quién toca la batería.')}
+      ${lis?`<p><a class="btn ghost" href="${esc(lis)}" target="_blank" rel="noopener">▶ Escuchar demo</a></p>`:'<p><span class="chip">Demo pendiente</span></p>'}</div>
+    <div class="drawer-f">${ed?'<button type="button" class="btn ghost" data-r="edit">Cambiar quién la lleva</button>':''}<span class="sp"></span>${ME?`<button type="button" class="btn primary" data-r="prac">${on?'✓ Ensayada':'Marcar ensayada'}</button>`:''}</div></div>`;
+  root.querySelectorAll('[data-close]').forEach(b=>b.onclick=closeDrawer);
+  root.querySelector('[data-r="prac"]')?.addEventListener('click',async()=>{const set=new Set((evMine(ev)||{}).practiced||[]);set.has(k)?set.delete(k):set.add(k);closeDrawer();await evSaveMe(ev,{practiced:[...set]})});
+  root.querySelector('[data-r="edit"]')?.addEventListener('click',()=>{closeDrawer();evSongRolesEdit(ev,x)})}
+function evSongRolesEdit(ev,x){const R=evSongRoles(ev,x),P=sortBy(S.people,p=>p.name).map(p=>[p.id,p.name]);
+  openForm({title:'Quién lleva «'+x.song+'»',intro:'<p class="small">Elige a quienes cantan de líder (puede ser más de una) y a quien toca la batería en esta canción.</p>',
+    fields:[{id:'leads',label:'Voces líderes',type:'multi',options:P,value:R.leads},{id:'drums',label:'Batería',type:'select',options:[['','Sin asignar'],...P],value:R.drums[0]||''}],
+    onSave:async v=>{const cur=byId(EV_COL,ev.id)||ev;if(await save(EV_COL,{...cur,songRoles:{...(cur.songRoles||{}),[x.k]:{leads:v.leads,drums:v.drums}}}))toast('Listo: guardado.')}})}
+
 const EV_PRESET={kind:'event',title:'A TU LADO',kicker:'Grabación en vivo',greek:'ΜΕΤΑ ΣΟΥ',tagline:'Segundo disco de Philly · re-versiones de himnos antiguos',
   date:'2026-11-07',time:'17:00',place:'Taber Olocuilta',active:true,
   about:'Vamos a grabar en vivo el segundo disco de Philly: re-versiones de himnos antiguos, junto con toda la iglesia. Para que salga bien necesitamos a todo el equipo asignado, confirmado y con las canciones ensayadas. Completa tus misiones y nos vemos en la tarima.',
@@ -185,11 +221,12 @@ function evEdit(ev){ev=ev||{...EV_PRESET};
 
 /* ---------- Acciones ---------- */
 document.addEventListener('click',async e=>{
-  const t=e.target.closest&&e.target.closest('[data-evento],[data-evx],[data-evprac],[data-evjump],[data-evcopy]');if(!t||t.closest('#drawerRoot'))return;const d=t.dataset;
+  const t=e.target.closest&&e.target.closest('[data-evento],[data-evx],[data-evprac],[data-evjump],[data-evcopy],[data-evsong]');if(!t||t.closest('#drawerRoot'))return;const d=t.dataset;
   if(d.evento){ui.eventoId=d.evento;ui.route='evento';ui.serviceId=null;try{history.replaceState(null,'','#evento')}catch(_){}render();window.scrollTo(0,0);return enterMain()}
   if(d.evjump){const el=document.getElementById(d.evjump);if(el)el.scrollIntoView({block:'start',behavior:RM.matches?'auto':'smooth'});return}
   if(d.evcopy){try{await navigator.clipboard.writeText(d.evcopy);toast('Copiado: '+d.evcopy)}catch(_){toast(d.evcopy)}return}
   const ev=byId(EV_COL,ui.eventoId)||evActive();
+  if(d.evsong&&ev)return evSongOpen(ev,d.evsong);
   if(d.evprac&&ev){const me=evMine(ev)||{};const set=new Set(me.practiced||[]);set.has(d.evprac)?set.delete(d.evprac):set.add(d.evprac);return evSaveMe(ev,{practiced:[...set]})}
   switch(d.evx){
     case 'seed':{if(!evCanEdit())return;const id=await save(EV_COL,{...EV_PRESET,createdAt:new Date().toISOString(),by:ME});if(id){ui.eventoId=id;toast('Evento creado. Ya aparece en Inicio.');ui.route='evento';render()}return}
