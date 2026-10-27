@@ -557,3 +557,10 @@ html.lite .evb-st>*,html.lite .evcd li{backdrop-filter:none;-webkit-backdrop-fil
 .evsongwin-l{list-style:none;margin:0;padding:0;display:flex;flex-wrap:wrap;gap:16px}
 .evsongwin-p{display:flex;flex-direction:column;align-items:center;gap:4px;text-align:center;min-width:92px}
 @media (max-width:560px){.evsongs-l li{align-items:flex-start}.evwho{order:2}.evsongs-a{margin-left:0;width:100%;flex-wrap:wrap}}
+
+.evgo2{display:flex;align-items:center;justify-content:center;gap:8px;width:calc(100% - 32px);margin:0 16px 12px;min-height:46px;font-weight:600}
+.evmsg-c{padding:14px 0;border-bottom:1px solid var(--line)}
+.evmsg-c:first-child{padding-top:0}
+.evmsg-h{display:flex;align-items:center;gap:12px;margin-bottom:10px}
+.evmsg-h .grow{display:flex;flex-direction:column;min-width:0}
+.evmsg-t{width:100%;min-height:240px;font:inherit;font-size:.9rem;line-height:1.45}

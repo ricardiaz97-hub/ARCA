@@ -93,7 +93,7 @@ function vEvento(){const ev=byId(EV_COL,ui.eventoId)||evActive();
 
   /* Setlist para ensayar */
   const songs=evSongs(ev),prac=new Set(me.practiced||[]);
-  const setl=s?`<section class="panel evsongs" id="evSongs"><div class="panel-h"><div><h2>Qué ensayar</h2><span class="muted small">${songs.length?`${songs.filter(x=>prac.has(x.k)).length} de ${songs.length} ensayadas por ti`:'Sin canciones todavía'}</span></div></div><button class="btn primary evgo" data-svc="${esc(s.id)}">Ver el culto completo <span aria-hidden="true">›</span></button>
+  const setl=s?`<section class="panel evsongs" id="evSongs"><div class="panel-h"><div><h2>Qué ensayar</h2><span class="muted small">${songs.length?`${songs.filter(x=>prac.has(x.k)).length} de ${songs.length} ensayadas por ti`:'Sin canciones todavía'}</span></div></div><button class="btn primary evgo" data-svc="${esc(s.id)}">Ver el culto completo <span aria-hidden="true">›</span></button>${ed?'<button class="btn ghost evgo2" data-evx="drummsgs">🥁 Mensajes para los bateristas</button>':''}
     ${ev.rehearseNote?`<p class="evp small" style="margin-top:0">${esc(ev.rehearseNote)}</p>`:''}
     ${songs.length?`<ol class="evsongs-l">${songs.map((x,i)=>{const on=prac.has(x.k);const r=x.row||{};const lis=isUrl(r.version)?r.version:'';const demo=lis?`<a class="btn sm ghost" href="${esc(lis)}" target="_blank" rel="noopener">▶ Escuchar demo</a>`:ev.link&&isUrl(ev.link)?`<a class="btn sm ghost" href="${esc(ev.link)}" target="_blank" rel="noopener">▶ Demo en la página</a>`:'<span class="chip">Demo pendiente</span>';
       return `<li class="${on?'on':''}"><span class="evsongs-n">${i+1}</span><button type="button" class="grow evsong-open" data-evsong="${esc(x.k)}" aria-label="Ver detalles de ${esc(x.song)}"><b>${esc(x.song)}</b><span class="small">${esc([x.lead,x.artist].filter(Boolean).join(' · '))}</span>${sparks(songTimes(x.song))}</button>${evWho(ev,x)}<span class="evsongs-a">${x.key?`<span class="key">${esc(x.key)}</span>`:''}${demo}${ME?`<button class="evprac" data-evprac="${esc(x.k)}" aria-pressed="${on}">${on?'✓ Ensayada':'Marcar ensayada'}</button>`:''}</span></li>`}).join('')}</ol>`:'<div class="empty">Cuando el culto tenga su setlist, aparecerá aquí para ensayar.</div>'}
@@ -167,6 +167,28 @@ function evSongRolesEdit(ev,x){const R=evSongRoles(ev,x),P=sortBy(S.people,p=>p.
   openForm({title:'Quién lleva «'+x.song+'»',intro:'<p class="small">Elige a quienes cantan de líder (puede ser más de una) y a quien toca la batería en esta canción.</p>',
     fields:[{id:'leads',label:'Voces líderes',type:'multi',options:P,value:R.leads},{id:'drums',label:'Batería',type:'select',options:[['','Sin asignar'],...P],value:R.drums[0]||''}],
     onSave:async v=>{const cur=byId(EV_COL,ev.id)||ev;if(await save(EV_COL,{...cur,songRoles:{...(cur.songRoles||{}),[x.k]:{leads:v.leads,drums:v.drums}}}))toast('Listo: guardado.')}})}
+
+/* Mensajes de WhatsApp para los bateristas: sus canciones (con el número del setlist), el tono y los links de demo y de Drive del culto */
+function evDrumGroups(ev){const by=new Map();
+  evSongs(ev).forEach((x,i)=>{const d=evSongRoles(ev,x).drums[0];if(!d)return;if(!by.has(d))by.set(d,[]);by.get(d).push({n:i+1,x})});
+  return [...by].map(([pid,list])=>({pid,list}))}
+function evDrumText(ev,pid,list){const p=byId('people',pid)||{},first=String(p.name||'').split(/\s+/)[0];
+  const day=fDate(ev.date,{weekday:'long',day:'numeric',month:'long'}).replace(/^./,c=>c.toUpperCase());
+  const L=list.map(({n,x})=>{const r=x.row||{},dem=isUrl(r.version)?r.version.trim():'',dr=isUrl(r.drive)?r.drive.trim():'';
+    return `${n}. *${x.song}*${x.key?' · Tono '+x.key:''}${dem?'\n🎧 Demo: '+dem:''}${dr?'\n📁 Drive: '+dr:''}`}).join('\n\n');
+  return `¡Hola ${first}! 🥁🙌\n\nEstas son las alabanzas que te tocan en la batería para *${ev.title}*${ev.kicker?' · '+ev.kicker:''}:\n\n${L}\n\n📅 ${day} · ${ampm(ev.time)}${ev.place?'\n📍 '+ev.place:''}\n\nEscúchalas, llega con tu parte lista y márcalas como ensayadas en Arca 🙏\n¡Dios te bendiga!`}
+function evDrumOpen(ev){const G=evDrumGroups(ev);
+  drawerOpen=true;clearTimeout(closeDrawer.t);const root=$('#drawerRoot');root.classList.remove('closing');
+  const card=g=>{const p=byId('people',g.pid)||{};return `<section class="evmsg-c" data-pid="${esc(g.pid)}"><div class="evmsg-h"><span class="evph">${evFace(g.pid)}</span><span class="grow"><b>${esc(p.name||'')}</b><span class="small">Batería · canciones ${esc(g.list.map(y=>y.n).join(', '))}</span></span></div>
+    <div class="field"><label for="evm_${esc(g.pid)}">Mensaje (puedes editarlo)</label><textarea id="evm_${esc(g.pid)}" class="evmsg-t" rows="12">${esc(evDrumText(ev,g.pid,g.list))}</textarea></div>
+    <div class="row"><button type="button" class="btn primary" data-m="wa">Enviar por WhatsApp</button><button type="button" class="btn ghost" data-m="copy">Copiar</button></div>${waNum(p)?'':'<p class="small muted">Esta persona no tiene teléfono en Arca: al enviar, WhatsApp te deja elegir el contacto.</p>'}</section>`};
+  root.innerHTML=`<div class="scrim" data-close></div><div class="drawer evsongwin" role="dialog" aria-modal="true" aria-label="Mensajes para los bateristas"><div class="grab" aria-hidden="true"></div>
+    <div class="drawer-h"><h2>Mensajes para los bateristas</h2><button type="button" class="icon-btn" data-close aria-label="Cerrar">✕</button></div>
+    <div class="drawer-b">${G.length?G.map(card).join(''):'<div class="empty">Todavía no hay bateristas asignados a las canciones. Elige quién toca en la ventana de cada canción.</div>'}</div></div>`;
+  root.querySelectorAll('[data-close]').forEach(b=>b.onclick=closeDrawer);
+  root.querySelectorAll('.evmsg-c').forEach(c=>{const pid=c.dataset.pid,t=c.querySelector('textarea');
+    c.querySelector('[data-m="wa"]').onclick=()=>{const num=waNum(byId('people',pid));window.open('https://wa.me/'+num+'?text='+encodeURIComponent(t.value),'_blank','noopener')};
+    c.querySelector('[data-m="copy"]').onclick=async()=>{try{await navigator.clipboard.writeText(t.value);toast('Mensaje copiado.')}catch(_){t.select();toast('Selecciona y copia el mensaje.')}}})}
 
 const EV_PRESET={kind:'event',title:'A TU LADO',kicker:'Grabación en vivo',greek:'ΜΕΤΑ ΣΟΥ',tagline:'Segundo disco de Philly · re-versiones de himnos antiguos',
   date:'2026-11-07',time:'17:00',place:'Taber Olocuilta',active:true,
@@ -244,6 +266,7 @@ document.addEventListener('click',async e=>{
   switch(d.evx){
     case 'seed':{if(!evCanEdit())return;const id=await save(EV_COL,{...EV_PRESET,createdAt:new Date().toISOString(),by:ME});if(id){ui.eventoId=id;toast('Evento creado. Ya aparece en Inicio.');ui.route='evento';render()}return}
     case 'edit':return evCanEdit()&&evEdit(ev);
+    case 'drummsgs':return evCanEdit()&&ev&&evDrumOpen(ev);
     case 'mksvc':return evCanEdit()&&ev&&evMakeSvc(ev);
     case 'dressok':return ev&&evSaveMe(ev,{dressOk:true});
     case 'share':{if(!ev)return;const msg=`🧡 ${ev.title}${ev.kicker?' · '+ev.kicker:''}\n${fDate(ev.date,{weekday:'long',day:'numeric',month:'long'})} · ${ampm(ev.time)}${ev.place?'\n📍 '+ev.place:''}\n\n${ev.tagline||''}\n¡Te esperamos! Hay un asiento reservado para ti.${ev.link&&isUrl(ev.link)?'\n'+ev.link:''}`;
