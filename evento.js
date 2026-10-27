@@ -140,12 +140,12 @@ function evWho(ev,x){const r=evSongRoles(ev,x);if(!r.leads.length&&!r.drums.leng
 function evSongOpen(ev,k){const all=evSongs(ev),x=all.find(y=>y.k===k);if(!x)return;
   const i=all.indexOf(x),r=x.row||{},on=((evMine(ev)||{}).practiced||[]).includes(k),R=evSongRoles(ev,x),ed=evCanEdit();
   const lis=isUrl(r.version)?r.version:ev.link&&isUrl(ev.link)?ev.link:'';
-  const person=(pid,role)=>`<li class="evsw-p"><span class="evph big">${evFace(pid)}</span><b>${esc(pName(pid).split(/\s+/).slice(0,2).join(' '))}</b><span class="small">${role}</span></li>`;
-  const who=(title,ids,role,empty)=>`<section class="evsw-s"><h3>${title}</h3>${ids.length?`<ul class="evsw-l">${ids.map(p=>person(p,role)).join('')}</ul>`:`<p class="muted small">${empty}</p>`}</section>`;
+  const person=(pid,role)=>`<li class="evsongwin-p"><span class="evph big">${evFace(pid)}</span><b>${esc(pName(pid).split(/\s+/).slice(0,2).join(' '))}</b><span class="small">${role}</span></li>`;
+  const who=(title,ids,role,empty)=>`<section class="evsongwin-s"><h3>${title}</h3>${ids.length?`<ul class="evsongwin-l">${ids.map(p=>person(p,role)).join('')}</ul>`:`<p class="muted small">${empty}</p>`}</section>`;
   drawerOpen=true;clearTimeout(closeDrawer.t);const root=$('#drawerRoot');root.classList.remove('closing');
-  root.innerHTML=`<div class="scrim" data-close></div><div class="drawer evsw" role="dialog" aria-modal="true" aria-label="${esc(x.song)}"><div class="grab" aria-hidden="true"></div>
+  root.innerHTML=`<div class="scrim" data-close></div><div class="drawer evsongwin" role="dialog" aria-modal="true" aria-label="${esc(x.song)}"><div class="grab" aria-hidden="true"></div>
     <div class="drawer-h"><h2>${esc(x.song)}</h2><button type="button" class="icon-btn" data-close aria-label="Cerrar">✕</button></div>
-    <div class="drawer-b"><p class="small evsw-meta"><span class="evsongs-n">${i+1}</span>${esc([x.artist,x.lead].filter(Boolean).join(' · '))}${x.key?` <span class="key">${esc(x.key)}</span>`:''}</p>
+    <div class="drawer-b"><p class="small evsongwin-meta"><span class="evsongs-n">${i+1}</span>${esc([x.artist,x.lead].filter(Boolean).join(' · '))}${x.key?` <span class="key">${esc(x.key)}</span>`:''}</p>
       ${who(R.leads.length>1?'Voces líderes':'Voz líder',R.leads,'Voz líder','Todavía no se ha elegido quién dirige esta canción.')}
       ${who('Batería',R.drums,'Batería','Todavía no se ha elegido quién toca la batería.')}
       ${lis?`<p><a class="btn ghost" href="${esc(lis)}" target="_blank" rel="noopener">▶ Escuchar demo</a></p>`:'<p><span class="chip">Demo pendiente</span></p>'}</div>
