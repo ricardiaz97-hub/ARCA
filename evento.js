@@ -9,7 +9,12 @@ function evActive(){return evEvents().find(x=>x.active!==false&&x.date>=addDays(
 const evCanEdit=()=>!!ME&&(ADMIN()||MANAGERS.includes(ME));
 const evMeId=(ev,pid)=>ev.id+'~'+pid;
 const evMine=(ev,pid=ME)=>pid?byId(EV_COL,evMeId(ev,pid))||null:null;
-const evSvc=ev=>ev&&ev.svcId?svcLookup(ev.svcId):null;
+/* Culto del evento: el vinculado; si el vínculo se perdió o el culto cambió de id, busca el de la misma fecha con el mismo nombre */
+const evSvc=ev=>{if(!ev)return null;
+  if(ev.svcId){const s=svcLookup(ev.svcId);if(s)return s}
+  const t=norm(ev.title||'');if(!t)return null;
+  const m=(S.services||[]).find(x=>!x.cancelled&&x.date===ev.date&&(norm(x.series||'')===t||norm(x.title||'').includes(t)));
+  return m?svcLookup(m.id):null};
 const evImg=a=>!a?'':(isUrl(a)||String(a).startsWith('/'))?a:assetUrl(a);
 const evMoney=n=>'$'+(Number(n)||0).toFixed(2);
 function evAt(ev){const d=parse(ev.date);const [h,m]=String(ev.time||'00:00').split(':').map(Number);d.setHours(h||0,m||0,0,0);return d}
