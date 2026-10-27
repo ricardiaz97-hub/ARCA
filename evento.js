@@ -129,10 +129,18 @@ function evGcal(ev){const a=evAt(ev),b=new Date(a.getTime()+2*36e5);const f=d=>d
 /* ---------- Datos iniciales (de la reunión de ministerios) ---------- */
 /* Quién lleva cada canción: voces líderes (puede ser más de una) y batería.
    Se guarda en el evento (ev.songRoles[clave]); si no se eligió nada, usa a quienes dirigen y a la batería del culto. */
+/* A TU LADO: quién dirige y quién toca la batería, por número de canción (orden del setlist). Lo que se elija en la ventana de la canción tiene prioridad. */
+const EV_ATL_LEADS=[['Ricardo Vega'],['Andrés Santos'],['Estefania Trejo'],['Yesy Amaya'],['Milena Panameño'],['Armando Bonifacio','Ricardo Vega'],['Andrés Santos','Mario Ortiz'],['Ricardo Vega','Andrés Santos'],['Andrés Santos','Ricardo Vega','Gaby Amaya'],['Yesy Amaya','Rebeca Alas'],['Estefania Trejo','Rebeca Alas','Milena Panameño','Yesy Amaya','Gaby Amaya'],['Andrés Santos','Ricardo Vega'],[],['Andrés Santos','Ricardo Vega']];
+const EV_ATL_DRUMS=n=>n<=6?'Ismael Alas':'Julio Argueta';
+function evPerson(label){const T=norm(label).split(/\s+/).filter(Boolean);if(!T.length)return null;
+  const p=(S.people||[]).find(q=>{const N=norm(q.name).split(/\s+/);return T.every(t=>N.some(n=>n.startsWith(t)))});return p?p.id:null}
 function evSongRoles(ev,x){const s=evSvc(ev),sr=(ev.songRoles||{})[x.k];
+  if(sr)return {leads:(sr.leads||[]).filter(p=>byId('people',p)),drums:(sr.drums?[sr.drums]:[]).filter(p=>byId('people',p))};
+  if(norm(ev.title)==='a tu lado'){const n=evSongs(ev).findIndex(y=>y.k===x.k)+1;
+    if(n>=1&&n<=EV_ATL_LEADS.length)return {leads:EV_ATL_LEADS[n-1].map(evPerson).filter(Boolean),drums:[evPerson(EV_ATL_DRUMS(n))].filter(Boolean)}}
   const A=s?(s.assignments||[]).filter(a=>a.personId&&a.status!=='declinado'):[];
-  const leads=sr&&sr.leads?sr.leads:[...new Set(A.filter(isLead).map(a=>a.personId))];
-  const drums=sr&&sr.drums!=null?(sr.drums?[sr.drums]:[]):[...new Set(A.filter(a=>/bater[ií]a/i.test(a.position||'')).map(a=>a.personId))].slice(0,1);
+  const leads=[...new Set(A.filter(isLead).map(a=>a.personId))];
+  const drums=[...new Set(A.filter(a=>/bater[ií]a/i.test(a.position||'')).map(a=>a.personId))].slice(0,1);
   return {leads:leads.filter(p=>byId('people',p)),drums:drums.filter(p=>byId('people',p))}}
 const evWhoFace=(pid,role)=>`<span class="evph" title="${esc(pName(pid))} · ${role}">${evFace(pid)}</span>`;
 function evWho(ev,x){const r=evSongRoles(ev,x);if(!r.leads.length&&!r.drums.length)return '';
@@ -146,8 +154,8 @@ function evSongOpen(ev,k){const all=evSongs(ev),x=all.find(y=>y.k===k);if(!x)ret
   root.innerHTML=`<div class="scrim" data-close></div><div class="drawer evsongwin" role="dialog" aria-modal="true" aria-label="${esc(x.song)}"><div class="grab" aria-hidden="true"></div>
     <div class="drawer-h"><h2>${esc(x.song)}</h2><button type="button" class="icon-btn" data-close aria-label="Cerrar">✕</button></div>
     <div class="drawer-b"><p class="small evsongwin-meta"><span class="evsongs-n">${i+1}</span>${esc([x.artist,x.lead].filter(Boolean).join(' · '))}${x.key?` <span class="key">${esc(x.key)}</span>`:''}</p>
-      ${who(R.leads.length>1?'Voces líderes':'Voz líder',R.leads,'Voz líder','Todavía no se ha elegido quién dirige esta canción.')}
-      ${who('Batería',R.drums,'Batería','Todavía no se ha elegido quién toca la batería.')}
+      ${who(R.leads.length>1?'Voces líderes':'Voz líder',R.leads,'Voz líder','Esta canción no tiene voz líder asignada.')}
+      ${who('Batería',R.drums,'Batería','Sin baterista asignado.')}
       ${lis?`<p><a class="btn ghost" href="${esc(lis)}" target="_blank" rel="noopener">▶ Escuchar demo</a></p>`:'<p><span class="chip">Demo pendiente</span></p>'}</div>
     <div class="drawer-f">${ed?'<button type="button" class="btn ghost" data-r="edit">Cambiar quién la lleva</button>':''}<span class="sp"></span>${ME?`<button type="button" class="btn primary" data-r="prac">${on?'✓ Ensayada':'Marcar ensayada'}</button>`:''}</div></div>`;
   root.querySelectorAll('[data-close]').forEach(b=>b.onclick=closeDrawer);
