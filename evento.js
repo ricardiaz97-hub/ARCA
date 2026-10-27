@@ -9,12 +9,15 @@ function evActive(){return evEvents().find(x=>x.active!==false&&x.date>=addDays(
 const evCanEdit=()=>!!ME&&(ADMIN()||MANAGERS.includes(ME));
 const evMeId=(ev,pid)=>ev.id+'~'+pid;
 const evMine=(ev,pid=ME)=>pid?byId(EV_COL,evMeId(ev,pid))||null:null;
-/* Culto del evento: el vinculado; si el vínculo se perdió o el culto cambió de id, busca el de la misma fecha con el mismo nombre */
+/* Culto del evento: el vinculado; si el vínculo se perdió, busca el culto con el nombre exacto del evento
+   ("<Subtítulo> · <Título>", como "Grabación en vivo · A TU LADO"). Si hay varios con ese nombre, el de la misma fecha y con más canciones. */
+const evKey=x=>norm(x).replace(/[^a-z0-9]+/g,'');
 const evSvc=ev=>{if(!ev)return null;
   if(ev.svcId){const s=svcLookup(ev.svcId);if(s)return s}
-  const t=norm(ev.title||'');if(!t)return null;
-  const m=(S.services||[]).find(x=>!x.cancelled&&x.date===ev.date&&(norm(x.series||'')===t||norm(x.title||'').includes(t)));
-  return m?svcLookup(m.id):null};
+  const want=evKey([ev.kicker,ev.title].filter(Boolean).join(' · '));if(!want)return null;
+  const c=(S.services||[]).filter(x=>!x.cancelled&&evKey(x.title)===want);
+  c.sort((a,b)=>(b.date===ev.date)-(a.date===ev.date)||(b.setlist||[]).length-(a.setlist||[]).length||Math.abs(parse(a.date)-parse(ev.date))-Math.abs(parse(b.date)-parse(ev.date)));
+  return c[0]?svcLookup(c[0].id):null};
 const evImg=a=>!a?'':(isUrl(a)||String(a).startsWith('/'))?a:assetUrl(a);
 const evMoney=n=>'$'+(Number(n)||0).toFixed(2);
 function evAt(ev){const d=parse(ev.date);const [h,m]=String(ev.time||'00:00').split(':').map(Number);d.setHours(h||0,m||0,0,0);return d}
