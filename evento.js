@@ -4,7 +4,13 @@
    - kind:'me'     → progreso de cada persona (id = <evento>~<persona>): canciones ensayadas, vestimenta vista, invitación compartida */
 const EV_COL='eventos';
 const evAll=()=>S[EV_COL]||[];
-const evEvents=()=>sortBy(evAll().filter(x=>x.kind==='event'),x=>x.date+(x.time||''));
+/* A TU LADO: si el evento aún no tiene arte, vestimenta o paleta guardados, usa los que vienen con Arca (lo guardado siempre gana) */
+const EV_DEF={art:'/img/evento-banner.webp',looks:['/img/evento-vestimenta-1.webp','/img/evento-vestimenta-2.webp'],
+  palettes:[{name:'A TU LADO',colors:['#F2E8D2','#E85D04','#B8A07A','#1B2A41','#111111']}],
+  dress:'Casual, cómodo y prudente. Mujeres: evitar zapatos abiertos, shorts y minifaldas. Hombres: evitar camisetas sin mangas y zapatos abiertos.'};
+const evFill=x=>{if(x.kind!=='event'||norm(x.title||'').replace(/[^a-z0-9]+/g,'')!=='atulado')return x;
+  return {...x,art:x.art||EV_DEF.art,looks:(x.looks||[]).length?x.looks:EV_DEF.looks,palettes:(x.palettes||[]).length?x.palettes:EV_DEF.palettes,dress:x.dress||EV_DEF.dress}};
+const evEvents=()=>sortBy(evAll().filter(x=>x.kind==='event').map(evFill),x=>x.date+(x.time||''));
 function evActive(){return evEvents().find(x=>x.active!==false&&x.date>=addDays(TODAY,-1))||null}
 const evCanEdit=()=>!!ME&&(ADMIN()||MANAGERS.includes(ME));
 const evMeId=(ev,pid)=>ev.id+'~'+pid;
@@ -195,7 +201,7 @@ const EV_PRESET={kind:'event',title:'A TU LADO',kicker:'Grabación en vivo',gree
   about:'Vamos a grabar en vivo el segundo disco de Philly: re-versiones de himnos antiguos, junto con toda la iglesia. Para que salga bien necesitamos a todo el equipo asignado, confirmado y con las canciones ensayadas. Completa tus misiones y nos vemos en la tarima.',
   calls:[{t:'15:00',what:'Llegada de todos los ministerios'},{t:'16:30',what:'Oración grupal y apertura del templo'},{t:'17:00',what:'Inicio de la grabación'},{t:'18:50',what:'Cierre estimado'}],
   rehearsals:[],rehearseNote:'Son canciones nuestras: ensaya con el demo de cada una, llega con tu parte lista y márcala cuando ya la tengas.',
-  dress:'',looks:[],palettes:[],pins:[],
+  dress:EV_DEF.dress,looks:EV_DEF.looks,palettes:EV_DEF.palettes,pins:[],art:EV_DEF.art,
   shirt:{name:'Camiseta A TU LADO',note:'A la venta para los asistentes',price:5.5,desc:'Negra. Frente: arte A TU LADO en naranja. Espalda: Philly | Taber Olocuilta.',img:'/img/evento-camiseta.webp',sizes:[]},
   link:''};
 const EV_RUN=[['17:00','Te Exaltaré','Arreglo coral'],['17:04','Grandes y Maravillosas','Andrés · confeti al inicio'],['17:08','Ven Espíritu Ven','Ricardo + Andrés'],['17:13','Poderoso','Tefa + Rebe'],['17:18','Tu Nombre Levantaré','Milena + Yesy'],['17:23','Solo de Jesús, la Sangre','Ricardo + Armando · primera vez'],['17:29','Pero Queda Cristo','Andrés + Ricardo'],['17:34','Vine a Alabar a Dios','Andrés + Mario'],['17:39','Popurrí Philly #1','Andrés + Coro · Gaby · Oh Moradora, Pon Aceite, Le Llaman Guerrero, En los Montes'],['17:47','He Decidido','Yesy ft. Wendy Interiano'],['17:54','Ministración','Yesy','item'],['18:00','Jesús','Tefa, Rebe, Mile'],['18:05','A Tu Lado','Ricardo + Andrés'],['18:15','Ministración','Ps Ricardo Vega','item'],['18:35','Llamado a recibir al Señor','Ps Mario Baires','item'],['18:40','Solo de Jesús (acústica y piano)','Arreglo coral'],['18:45','Enfoque','Todos','item'],['18:50']];

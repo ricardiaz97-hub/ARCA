@@ -502,8 +502,8 @@ html.lite .tcard::before,html.lite .panel::before{display:none}
 .evrun li.min b{color:var(--acc-hi)}
 .evrun li .mono{width:44px;flex:none;color:var(--muted)}
 .evrun li.hd{font-family:var(--f-display);text-transform:uppercase;letter-spacing:.1em;color:var(--muted)}
-.evlooks{display:grid;grid-template-columns:repeat(auto-fill,minmax(120px,1fr));gap:8px;margin:8px 0 14px}
-.evlook{display:block;aspect-ratio:3/4;overflow:hidden;clip-path:polygon(10px 0,100% 0,100% calc(100% - 10px),calc(100% - 10px) 100%,0 100%,0 10px)}
+.evlooks{display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:8px;margin:8px 0 14px}
+.evlook{display:block;aspect-ratio:2/3;overflow:hidden;clip-path:polygon(10px 0,100% 0,100% calc(100% - 10px),calc(100% - 10px) 100%,0 100%,0 10px)}
 .evlook img{width:100%;height:100%;object-fit:cover;transition:transform .3s}
 @media (hover:hover){.evlook:hover img{transform:scale(1.04)}}
 .evpal{display:grid;gap:12px;margin:6px 0 12px}
