@@ -41,5 +41,12 @@ y dice exactamente qué falta. No muestra ningún secreto.
 ## Unirse a JEV+
 Comparte `https://TU-DOMINIO/unirse.html`. Las solicitudes llegan a JEV+ → Tú → “Solicitudes para unirse”.
 
+## Avisos en el teléfono
+1. **Vercel → Settings → Environment Variables** (Production) y después **Redeploy**:
+   - `VAPID_PUBLIC_KEY` y `VAPID_PRIVATE_KEY`: llaves para los avisos (se generan una vez con `npx web-push generate-vapid-keys`; si se cambian, cada teléfono debe volver a activar sus avisos).
+   - `CRON_SECRET`: cualquier texto largo y secreto; Vercel lo usa para llamar al recordatorio diario.
+2. Cada persona entra a Arca → **Tú → Avisos en este teléfono → Activar avisos**. En iPhone primero: Safari → Compartir → Agregar a pantalla de inicio, y abrir Arca desde ese ícono.
+3. El recordatorio diario (“Mañana sirves”) sale a las 6 p. m. de El Salvador (`vercel.json`).
+
 ## Límite
 Vercel no acepta subidas de más de 4.5 MB por petición; Arca avisa si un archivo pasa de 4 MB.
