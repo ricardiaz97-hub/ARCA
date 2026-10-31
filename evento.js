@@ -11,6 +11,8 @@ const EV_DEF={art:'/img/evento-banner.webp',looks:['/img/evento-vestimenta-1.web
 const evFill=x=>{if(x.kind!=='event'||norm(x.title||'').replace(/[^a-z0-9]+/g,'')!=='atulado')return x;
   return {...x,art:x.art||EV_DEF.art,looks:(x.looks||[]).length?x.looks:EV_DEF.looks,palettes:(x.palettes||[]).length?x.palettes:EV_DEF.palettes,dress:x.dress||EV_DEF.dress}};
 const evEvents=()=>sortBy(evAll().filter(x=>x.kind==='event').map(evFill),x=>x.date+(x.time||''));
+/* El evento con sus imágenes por defecto (lo guardado manda). Usar siempre esto en vez de byId(EV_COL,…) para mostrarlo. */
+const evGet=id=>{const x=id&&byId(EV_COL,id);return x?evFill(x):null};
 function evActive(){return evEvents().find(x=>x.active!==false&&x.date>=addDays(TODAY,-1))||null}
 const evCanEdit=()=>!!ME&&(ADMIN()||MANAGERS.includes(ME));
 const evMeId=(ev,pid)=>ev.id+'~'+pid;
@@ -66,7 +68,7 @@ function evBanner(compact){const ev=evActive();if(!ev)return evCanEdit()&&!evEve
     <span class="evb-go">Ver evento <span aria-hidden="true">›</span></span></button>`}
 
 /* ---------- Página del evento ---------- */
-function vEvento(){const ev=byId(EV_COL,ui.eventoId)||evActive();
+function vEvento(){const ev=evGet(ui.eventoId)||evActive();
   const back=`<button class="linkb evback" data-go="inicio">‹ Volver a Inicio</button>`;
   if(!ev)return `${back}<section class="panel empty"><b>No hay eventos activos</b>${evCanEdit()?'<p><button class="btn primary" data-evx="seed">Crear evento A TU LADO</button></p>':'Cuando haya uno, aparecerá aquí.'}</section>`;
   const s=evSvc(ev),ed=evCanEdit(),me=evMine(ev)||{},l=evLeft(ev);
@@ -247,7 +249,7 @@ function evEdit(ev){ev=ev||{...EV_PRESET};
       const doc={...ev,kind:'event',title:v.title,kicker:v.kicker,tagline:v.tagline,date:v.date,time:v.time,place:v.place,greek:v.greek,svcId:v.svcId,art:v.art,about:v.about,
         calls:evLines(v.calls).map(l=>{const c=evCells(l);return {t:c[0]||'',what:c.slice(1).join(' | ')}}).filter(c=>c.what),
         rehearsals:sortBy(evLines(v.rehearsals).map(l=>{const c=evCells(l);return {date:c[0]||'',time:c[1]||'',place:c[2]||'',note:c[3]||''}}).filter(r=>/^\d{4}-\d{2}-\d{2}$/.test(r.date)),r=>r.date+r.time),
-        rehearseNote:v.rehearseNote,dress:v.dress,looks:evLines(v.looks).filter(x=>isUrl(x)||/^gdrv:|^drive:|^[\w-]{10,}$/.test(x)),palettes:pal,pins,
+        rehearseNote:v.rehearseNote,dress:v.dress,looks:evLines(v.looks).filter(x=>isUrl(x)||/^\/img\/|^gdrv:|^drive:|^[\w-]{10,}$/.test(x)),palettes:pal,pins,
         shirt:{...sh,name:v.shName,price:v.shPrice===''?'':Number(v.shPrice),note:v.shNote,desc:v.shDesc,sizes:v.shSizes.split(',').map(x=>x.trim()).filter(Boolean)},
         link:v.link,active:v.active!=='no',updatedAt:new Date().toISOString()};
       const id=await save(EV_COL,doc);if(id){ui.eventoId=id;toast('Listo: evento guardado.')}},
@@ -266,7 +268,7 @@ document.addEventListener('click',async e=>{
   if(d.evento){ui.eventoId=d.evento;ui.route='evento';ui.serviceId=null;try{history.replaceState(null,'','#evento')}catch(_){}render();window.scrollTo(0,0);return enterMain()}
   if(d.evjump){const el=document.getElementById(d.evjump);if(el)el.scrollIntoView({block:'start',behavior:RM.matches?'auto':'smooth'});return}
   if(d.evcopy){try{await navigator.clipboard.writeText(d.evcopy);toast('Copiado: '+d.evcopy)}catch(_){toast(d.evcopy)}return}
-  const ev=byId(EV_COL,ui.eventoId)||evActive();
+  const ev=evGet(ui.eventoId)||evActive();
   if(d.evsong&&ev)return evSongOpen(ev,d.evsong);
   if(d.evprac&&ev){const me=evMine(ev)||{};const set=new Set(me.practiced||[]);set.has(d.evprac)?set.delete(d.evprac):set.add(d.evprac);return evSaveMe(ev,{practiced:[...set]})}
   switch(d.evx){
@@ -281,6 +283,6 @@ document.addEventListener('click',async e=>{
 });
 /* Cuenta regresiva viva (solo si hay una en pantalla) */
 setInterval(()=>{const els=document.querySelectorAll('[data-cd],[data-cdtxt]');if(!els.length)return;
-  els.forEach(el=>{const ev=byId(EV_COL,el.dataset.cd||el.dataset.cdtxt);if(!ev)return;
+  els.forEach(el=>{const ev=evGet(el.dataset.cd||el.dataset.cdtxt);if(!ev)return;
     if(el.dataset.cdtxt){const t=evLeftTxt(ev);if(el.textContent!==t)el.textContent=t;return}
     const l=evLeft(ev);for(const k of ['d','h','m','s']){const b=el.querySelector(`[data-u="${k}"]`);const v=String(l[k]).padStart(2,'0');if(b&&b.textContent!==v)b.textContent=v}})},1000);
