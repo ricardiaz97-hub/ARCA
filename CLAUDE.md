@@ -10,10 +10,10 @@
 - Referencia de diseño para otras apps de Ricardo: `estelar.css` y la skill `vidrio-estelar`.
 
 **3. Cómo está hecho.**
-- Sin framework ni compilación. `index.html` (un solo archivo grande con casi toda la app), `estelar.css` (tema Vidrio estelar), `evento.js` (banner y página de evento de Philly), `jev.js` y `jev.css` (todo lo de JEV+).
-- Funciones de Vercel en `api/` (`api/auth/` contraseñas, `api/drive/` archivos) y utilidades en `lib/`.
+- Sin framework ni compilación. `index.html` (un solo archivo grande con casi toda la app), `estelar.css` (tema Vidrio estelar), `evento.js` (banner y página de evento de Philly), `comida.js` y `comida.css` (pedido de comida de Philly), `push.js` (avisos en el teléfono, lado del navegador), `jev.js` y `jev.css` (todo lo de JEV+).
+- Funciones de Vercel en `api/` (`api/auth/` contraseñas, `api/drive/` archivos, `api/push/` avisos) y utilidades en `lib/` (`lib/push.js`). Ya son 12 funciones: es el máximo del plan gratis de Vercel, así que algo nuevo debe ir dentro de un archivo existente.
 - Los planes de culto viven dentro de `jevacts` (`items` y `assignments`). Cada colección de datos vive en `S[coleccion]`; `save(col, obj)` y `remove(col, id)` escriben a Supabase con el espacio activo. Hay conexión en vivo (realtime) filtrada por espacio.
-- Colecciones: `people, teams, songs, services, events, projects, tasks, recurring, settings, requests, devos, devoviews, devocomments, setlists, pwresets, eventos, jevacts, jevideas, jevbdays, jevprops`.
+- Colecciones: `people, teams, songs, services, events, projects, tasks, recurring, settings, requests, devos, devoviews, devocomments, setlists, pwresets, eventos, jevacts, jevideas, jevbdays, jevprops, comidas`.
 - Archivos SQL: `spaces.sql` (espacios y permisos), `spaces-rollback.sql` (deshacer), `drive-setup.sql`, `cerrar-acceso.sql` (apaga el acceso heredado a Philly), `lock-down.sql` (solo para antes de los espacios).
 
 **4. Decisiones ya tomadas.**
@@ -33,6 +33,9 @@
 - Ingreso a JEV+: formulario propio `unirse.html` → `api/join/request` guarda una solicitud en el espacio `jev`; un líder la aprueba en Tú → “Solicitudes para unirse” (crea el perfil y da la membresía). Si se pega un link de Google Forms en Equipo, ese tiene prioridad.
 - Contraseñas olvidadas: `api/auth/forgot` guarda la solicitud en cada espacio donde está el correo; `api/auth/reset` la atiende un admin de ese espacio (`requireSpaceAdmin` en `lib/arca-admins.js`).
 - Marca de JEV+: `img/jev-logo.webp`, iconos `img/jev-*.png` y `manifest-jev.webmanifest` (se cambia solo al entrar a JEV+).
+
+- **Pedido de comida (Philly, `comida.js`, colección `comidas`):** cualquiera abre una votación con restaurantes (uno por línea, `nombre | precio | link`). Cada quien responde Sí como / Como aparte / No voy (registro propio `kind:'me'`, id `<pedido>~<persona>`, para que los votos no se pisen) y vota. Quien la abrió, los admin o los encargados anuncian el ganador; luego cada quien escribe su comida con precio, se marca quién pagó el pedido, el envío se divide entre los que pidieron y se marca quién ya pagó. Ruta `#comida`; banner en Inicio y Tú (en Inicio, sin votación activa, aparece “¿Encargan comida?” de jueves a domingo).
+- **Avisos en el teléfono (Web Push):** cada quien los activa en Tú. La suscripción se guarda en `arca_private` (llave `push:<hash>`, por correo y persona). `save()` llama a `arcaAfterSave` (en `push.js`) para avisar de nuevas asignaciones de servicios y tareas; `comida.js` avisa cada voto, respuesta, plato, ganador, pedido y pago. `api/push/send` arma los textos con lo guardado en Supabase. Vercel Cron (`vercel.json`) llama a `GET /api/push/send` a las 6 p. m. de El Salvador: “Mañana sirves” y “Tu tarea vence mañana”. Variables: `VAPID_PUBLIC_KEY`, `VAPID_PRIVATE_KEY`, `CRON_SECRET` (y opcional `VAPID_SUBJECT`). En iPhone solo funciona con Arca agregada a la pantalla de inicio (iOS 16.4+). JEV+ aún no manda avisos.
 
 **6. Pendiente, en orden.**
 1. Publicar esta versión y **después** correr `cerrar-acceso.sql` en Supabase (si alguna cuenta quedaría sin acceso, el script se detiene y lista sus correos). Desde entonces una cuenta nueva sin membresía ve “Tu cuenta aún no tiene acceso”.
