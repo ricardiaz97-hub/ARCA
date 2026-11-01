@@ -72,8 +72,10 @@ document.addEventListener('click',async e=>{const t=e.target.closest&&e.target.c
   if(t.dataset.pu==='off')return puDisable();
   if(t.dataset.pu==='test')return puTest()});
 /* Prueba con diagnóstico: dice exactamente dónde falla para poder arreglarlo */
-async function puTest(){const s=await puSub();if(s)await puSave(s).catch(()=>{});
-  const r=await arcaApi('/api/push/send',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({kind:'test',space:SPACE,from:ME||'',endpoint:s?s.endpoint:''})}).catch(()=>null);
+async function puTest(){try{const g=await navigator.serviceWorker.getRegistration('/');if(g)await g.update()}catch(_){}
+  const s=await puSub();if(s)await puSave(s).catch(()=>{});
+  toast('Sal de Arca ahora (ve a la pantalla de inicio o bloquea el teléfono): el aviso llega en unos 10 segundos.');
+  const r=await arcaApi('/api/push/send',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({kind:'test',space:SPACE,from:ME||'',endpoint:s?s.endpoint:'',delay:10})}).catch(()=>null);
   const j=r?await r.json().catch(()=>({})):{};
   const info=[`Teléfono suscrito: ${s?'sí':'no'}`,`Permiso: ${typeof Notification!=='undefined'?Notification.permission:'—'}`,`App instalada: ${puStandalone()?'sí':'no'}`,
     `Servidor: ${r?r.status:'sin conexión'}`,`Teléfonos tuyos guardados: ${j.devices??'—'}`,`Este teléfono guardado: ${j.here==null?'—':j.here?'sí':'no'}`,`Avisos enviados: ${j.sent??0}`,
@@ -85,4 +87,6 @@ document.addEventListener('change',e=>{const t=e.target;if(t&&t.dataset&&t.datas
 /* Al tocar un aviso con Arca abierta: ir a la pantalla del aviso */
 if('serviceWorker' in navigator)navigator.serviceWorker.addEventListener('message',e=>{const r=e.data&&e.data.arcaRoute;if(!r)return;
   if(e.data.comidaId)ui.comidaId=e.data.comidaId;try{go(r)}catch(_){}});
+/* Que el teléfono use siempre el sw.js más nuevo (el viejo no sabía mostrar avisos) */
+if('serviceWorker' in navigator)window.addEventListener('load',()=>navigator.serviceWorker.getRegistration('/').then(g=>g&&g.update()).catch(()=>{}));
 document.addEventListener('visibilitychange',()=>{if(document.visibilityState==='visible'&&PU.state)puRefresh()});
