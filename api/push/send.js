@@ -162,9 +162,11 @@ export default async function handler(req, res) {
     const email = lower(user.email);
 
     if (b.kind === 'test') {
-      const subs = await allSubs();
-      const sent = await deliver([{ email, personId: String(b.from || ''), msg: { title: '🔔 ¡Funciona!', body: 'Así te van a llegar los avisos de Arca.', url: '/#turno', route: 'turno' } }], null, subs);
-      return res.json({ ok: true, sent });
+      const subs = await allSubs(), errors = [];
+      const mine = subs.filter(s => s.email === email || (b.from && s.personId === String(b.from)));
+      const here = b.endpoint ? mine.some(s => s.sub.endpoint === b.endpoint) : null;
+      const sent = await deliver([{ email, personId: String(b.from || ''), msg: { title: '🔔 ¡Funciona!', body: 'Así te van a llegar los avisos de Arca.', url: '/#turno', route: 'turno' } }], null, subs, errors);
+      return res.json({ ok: true, sent, devices: mine.length, here, errors });
     }
 
     if (!(await spacesOfEmail(sb, email)).includes(space)) return res.status(403).json({ error: 'no_access', message: 'No perteneces a ese grupo.' });

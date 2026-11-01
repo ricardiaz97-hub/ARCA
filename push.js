@@ -70,8 +70,17 @@ window.arcaAfterSave=(col,before,rec)=>{if(SPACE!=='philly'||!rec)return;
 document.addEventListener('click',async e=>{const t=e.target.closest&&e.target.closest('[data-pu]');if(!t)return;
   if(t.dataset.pu==='on')return puEnable();
   if(t.dataset.pu==='off')return puDisable();
-  if(t.dataset.pu==='test'){const r=await arcaApi('/api/push/send',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({kind:'test',space:SPACE})}).catch(()=>null);
-    const j=r?await r.json().catch(()=>({})):{};toast(r&&r.ok?(j.sent?'Aviso enviado. Debería llegarte en unos segundos.':'No encontré este teléfono en el servidor. Apaga y vuelve a activar los avisos.'):(j.message||'No se pudo mandar.'))}});
+  if(t.dataset.pu==='test')return puTest()});
+/* Prueba con diagnóstico: dice exactamente dónde falla para poder arreglarlo */
+async function puTest(){const s=await puSub();if(s)await puSave(s).catch(()=>{});
+  const r=await arcaApi('/api/push/send',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({kind:'test',space:SPACE,from:ME||'',endpoint:s?s.endpoint:''})}).catch(()=>null);
+  const j=r?await r.json().catch(()=>({})):{};
+  const info=[`Teléfono suscrito: ${s?'sí':'no'}`,`Permiso: ${typeof Notification!=='undefined'?Notification.permission:'—'}`,`App instalada: ${puStandalone()?'sí':'no'}`,
+    `Servidor: ${r?r.status:'sin conexión'}`,`Teléfonos tuyos guardados: ${j.devices??'—'}`,`Este teléfono guardado: ${j.here==null?'—':j.here?'sí':'no'}`,`Avisos enviados: ${j.sent??0}`,
+    ...(j.errors||[]).map(e=>`Rechazo de ${e.host}: ${e.status} ${e.body}`),...(j.message?['Mensaje: '+j.message]:[])].join('\n');
+  const ok=r&&r.ok&&j.sent>0;
+  openForm({title:ok?'Aviso enviado':'El aviso no salió',saveLabel:'Copiar',intro:`<p class="small" style="margin-top:0">${ok?'Debería llegarte en unos segundos. Si no llega, copia esto y mándaselo a Ricardo.':'Copia esto y mándaselo a Ricardo para arreglarlo.'}</p>`,
+    fields:[{id:'d',label:'Diagnóstico',type:'textarea',value:info}],onSave:async()=>{try{await navigator.clipboard.writeText(info);toast('Copiado.')}catch(_){toast('Selecciona el texto y cópialo.')}}})}
 document.addEventListener('change',e=>{const t=e.target;if(t&&t.dataset&&t.dataset.pupref)puSetPref(t.dataset.pupref,t.checked)});
 /* Al tocar un aviso con Arca abierta: ir a la pantalla del aviso */
 if('serviceWorker' in navigator)navigator.serviceWorker.addEventListener('message',e=>{const r=e.data&&e.data.arcaRoute;if(!r)return;
