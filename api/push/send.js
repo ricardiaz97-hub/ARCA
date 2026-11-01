@@ -162,6 +162,9 @@ export default async function handler(req, res) {
     const email = lower(user.email);
 
     if (b.kind === 'test') {
+      // Con espera: así da tiempo de salir de Arca (el iPhone no muestra avisos de la app que tienes abierta).
+      const wait = Math.min(15, Math.max(0, Number(b.delay) || 0));
+      if (wait) await new Promise(r => setTimeout(r, wait * 1000));
       const subs = await allSubs(), errors = [];
       const mine = subs.filter(s => s.email === email || (b.from && s.personId === String(b.from)));
       const here = b.endpoint ? mine.some(s => s.sub.endpoint === b.endpoint) : null;
